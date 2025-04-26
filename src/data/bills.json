@@ -1,0 +1,40 @@
+[
+  {
+    "congress": 118,
+    "billNumber": 1,
+    "billType": "HR",
+    "title": "To amend the Internal Revenue Code of 1986 to provide tax relief for middle-class families",
+    "sponsor": {
+      "bioguideId": "S001184",
+      "firstName": "John",
+      "lastName": "Smith",
+      "party": "D",
+      "state": "CA"
+    },
+    "introducedDate": "2023-01-03",
+    "latestAction": {
+      "actionDate": "2023-02-15",
+      "text": "Referred to the Committee on Ways and Means"
+    },
+    "status": "REFERRED"
+  },
+  {
+    "congress": 118,
+    "billNumber": 2,
+    "billType": "S",
+    "title": "A bill to improve access to healthcare in rural areas",
+    "sponsor": {
+      "bioguideId": "J000293",
+      "firstName": "Jane",
+      "lastName": "Johnson",
+      "party": "R",
+      "state": "TX"
+    },
+    "introducedDate": "2023-01-04",
+    "latestAction": {
+      "actionDate": "2023-03-01",
+      "text": "Read twice and referred to the Committee on Health, Education, Labor, and Pensions"
+    },
+    "status": "REFERRED"
+  }
+]

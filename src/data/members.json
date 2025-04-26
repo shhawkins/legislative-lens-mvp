@@ -1,0 +1,26 @@
+[
+  {
+    "bioguideId": "S001184",
+    "firstName": "John",
+    "lastName": "Smith",
+    "party": "D",
+    "state": "CA",
+    "district": "12",
+    "chamber": "house",
+    "title": "Representative",
+    "startDate": "2021-01-03",
+    "endDate": "2023-01-03"
+  },
+  {
+    "bioguideId": "J000293",
+    "firstName": "Jane",
+    "lastName": "Johnson",
+    "party": "R",
+    "state": "TX",
+    "district": "5",
+    "chamber": "senate",
+    "title": "Senator",
+    "startDate": "2019-01-03",
+    "endDate": "2025-01-03"
+  }
+]

@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  BASE_URL: 'https://cors.sh/https://api.congress.gov/v3',
+  BASE_URL: 'https://cors-anywhere.herokuapp.com/https://api.congress.gov/v3',
   ENDPOINTS: {
     BILL: '/bill/{congress}/{type}/{number}',
     MEMBER: '/member/{bioguideId}',

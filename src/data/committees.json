@@ -1,0 +1,26 @@
+[
+  {
+    "congress": 118,
+    "chamber": "house",
+    "committeeId": "HSWM",
+    "name": "Committee on Ways and Means",
+    "subcommittees": [
+      {
+        "subcommitteeId": "HSWM01",
+        "name": "Subcommittee on Health"
+      }
+    ]
+  },
+  {
+    "congress": 118,
+    "chamber": "senate",
+    "committeeId": "SSHR",
+    "name": "Committee on Health, Education, Labor, and Pensions",
+    "subcommittees": [
+      {
+        "subcommitteeId": "SSHR01",
+        "name": "Subcommittee on Primary Health and Retirement Security"
+      }
+    ]
+  }
+]
