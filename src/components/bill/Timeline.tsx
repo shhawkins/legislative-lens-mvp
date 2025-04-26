@@ -1,9 +1,13 @@
 import React from 'react';
 import { Box, Flex, Text } from '@chakra-ui/react';
-import { BillTimelineEvent } from '../../types/bill';
+
+interface TimelineEvent {
+  date: string;
+  milestone: string;
+}
 
 interface TimelineProps {
-  timeline: BillTimelineEvent[];
+  timeline: TimelineEvent[];
 }
 
 /**
@@ -12,7 +16,7 @@ interface TimelineProps {
  * with the date and milestone description.
  * 
  * @param {TimelineProps} props - Component props
- * @param {BillTimelineEvent[]} props.timeline - Array of timeline events for the bill
+ * @param {TimelineEvent[]} props.timeline - Array of timeline events for the bill
  * @returns {JSX.Element} Timeline visualization component
  */
 const Timeline: React.FC<TimelineProps> = React.memo(({ timeline }) => (
@@ -48,7 +52,7 @@ const Timeline: React.FC<TimelineProps> = React.memo(({ timeline }) => (
             color="gray.500"
             fontWeight="medium"
           >
-            {event.date}
+            {new Date(event.date).toLocaleDateString()}
           </Text>
           <Text
             fontSize="md"

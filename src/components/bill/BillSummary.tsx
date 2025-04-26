@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -19,14 +19,16 @@ import {
   Text,
   VStack,
   useDisclosure,
+  Spinner,
 } from '@chakra-ui/react';
-import { Bill } from '../../types/bill';
+import { Bill } from '../../services/api/types';
 import { Committee } from '../../types/committee';
 import Timeline from './Timeline';
 import CommitteeModal from '../committee/CommitteeModal';
+import { ApiService } from '../../services/api/ApiService';
 
 interface BillSummaryProps {
-  bill: Bill;
+  billId: string;
 }
 
 /**
@@ -35,13 +37,34 @@ interface BillSummaryProps {
  * It also provides access to the full bill text and committee information.
  * 
  * @param {BillSummaryProps} props - Component props
- * @param {Bill} props.bill - The bill data to display
+ * @param {string} props.billId - The bill ID in format "congress-type-number" (e.g., "118-hr-1234")
  * @returns {JSX.Element} Bill summary component
  */
-const BillSummary: React.FC<BillSummaryProps> = ({ bill }) => {
+const BillSummary: React.FC<BillSummaryProps> = ({ billId }) => {
+  const [bill, setBill] = useState<Bill | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isCommitteeOpen, onOpen: onCommitteeOpen, onClose: onCommitteeClose } = useDisclosure();
   const [selectedCommittee, setSelectedCommittee] = useState<Committee | null>(null);
+
+  useEffect(() => {
+    const fetchBill = async () => {
+      try {
+        const [congress, type, number] = billId.split('-');
+        const apiService = ApiService.getInstance();
+        const response = await apiService.getBillById(parseInt(congress), type, number);
+        setBill(response.bills?.[0] || null);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching bill:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch bill');
+        setLoading(false);
+      }
+    };
+
+    fetchBill();
+  }, [billId]);
 
   const handleCommitteeClick = (committeeName: string) => {
     // In a real implementation, this would fetch committee data from the API
@@ -59,6 +82,30 @@ const BillSummary: React.FC<BillSummaryProps> = ({ bill }) => {
     onCommitteeOpen();
   };
 
+  if (loading) {
+    return (
+      <Box p={4} display="flex" justifyContent="center">
+        <Spinner size="xl" />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box p={4} bg="red.100" color="red.700" borderRadius="md">
+        <Text>Error: {error}</Text>
+      </Box>
+    );
+  }
+
+  if (!bill) {
+    return (
+      <Box p={4} bg="yellow.100" color="yellow.700" borderRadius="md">
+        <Text>Bill not found</Text>
+      </Box>
+    );
+  }
+
   return (
     <>
       <VStack spacing={6} align="stretch">
@@ -71,23 +118,31 @@ const BillSummary: React.FC<BillSummaryProps> = ({ bill }) => {
               </CardHeader>
               <CardBody>
                 <Text fontSize="md" lineHeight="tall">
-                  {bill.summary}
+                  {bill.summaries.list[0]?.text || 'No summary available'}
                 </Text>
-                <Text mt={4}><strong>Status:</strong> {bill.status}</Text>
-                <Text><strong>Sponsors:</strong> {bill.sponsors.join(', ')}</Text>
+                <Text mt={4}><strong>Status:</strong> {bill.latestAction.text}</Text>
+                <Text>
+                  <strong>Sponsors:</strong>{' '}
+                  {bill.sponsors.map((sponsor, index) => (
+                    <React.Fragment key={sponsor.bioguideId}>
+                      {index > 0 && ', '}
+                      {sponsor.fullName}
+                    </React.Fragment>
+                  ))}
+                </Text>
                 <Text>
                   <strong>Committees:</strong>{' '}
-                  {bill.committees.map((committee, index) => (
-                    <React.Fragment key={committee}>
+                  {bill.committees.list.map((committee, index) => (
+                    <React.Fragment key={committee.systemCode}>
                       {index > 0 && ', '}
                       <Box
                         as="span"
                         color="blue.500"
                         cursor="pointer"
                         _hover={{ textDecoration: 'underline' }}
-                        onClick={() => handleCommitteeClick(committee)}
+                        onClick={() => handleCommitteeClick(committee.name)}
                       >
-                        {committee}
+                        {committee.name}
                       </Box>
                     </React.Fragment>
                   ))}
@@ -105,18 +160,11 @@ const BillSummary: React.FC<BillSummaryProps> = ({ bill }) => {
           </CardHeader>
           <CardBody>
             <VStack spacing={4} align="stretch">
-              <Text fontSize="md">
-                • This bill focuses on promoting renewable energy adoption across the United States
-              </Text>
-              <Text fontSize="md">
-                • It includes provisions for tax incentives for clean energy projects
-              </Text>
-              <Text fontSize="md">
-                • The bill establishes new energy efficiency standards for federal buildings
-              </Text>
-              <Text fontSize="md">
-                • It creates a new grant program for renewable energy research and development
-              </Text>
+              {bill.subjects.legislativeSubjects.map((subject, index) => (
+                <Text key={index} fontSize="md">
+                  • {subject.name}
+                </Text>
+              ))}
             </VStack>
           </CardBody>
         </Card>
@@ -141,9 +189,9 @@ const BillSummary: React.FC<BillSummaryProps> = ({ bill }) => {
                 placeholder="Select version"
                 size="sm"
                 width="200px"
-                defaultValue={bill.textVersions[0]?.type}
+                defaultValue={bill.textVersions.list[0]?.type}
               >
-                {bill.textVersions.map((version) => (
+                {bill.textVersions.list.map((version) => (
                   <option key={version.date} value={version.type}>
                     {version.type} - {new Date(version.date).toLocaleDateString()}
                   </option>
@@ -159,23 +207,30 @@ const BillSummary: React.FC<BillSummaryProps> = ({ bill }) => {
                 <VStack spacing={6} align="stretch">
                   <Box>
                     <Heading size="sm" mb={2}>Summary</Heading>
-                    <Text>{bill.summary}</Text>
+                    <Text>{bill.summaries.list[0]?.text || 'No summary available'}</Text>
                   </Box>
                   <Box>
                     <Heading size="sm" mb={2}>Status</Heading>
-                    <Text>{bill.status}</Text>
+                    <Text>{bill.latestAction.text}</Text>
                   </Box>
                   <Box>
                     <Heading size="sm" mb={2}>Sponsors</Heading>
-                    <Text>{bill.sponsors.join(', ')}</Text>
+                    <Text>
+                      {bill.sponsors.map(sponsor => sponsor.fullName).join(', ')}
+                    </Text>
                   </Box>
                   <Box>
                     <Heading size="sm" mb={2}>Committees</Heading>
-                    <Text>{bill.committees.join(', ')}</Text>
+                    <Text>
+                      {bill.committees.list.map(committee => committee.name).join(', ')}
+                    </Text>
                   </Box>
                   <Box>
                     <Heading size="sm" mb={2}>Timeline</Heading>
-                    <Timeline timeline={bill.timeline} />
+                    <Timeline timeline={bill.actions.list.map(action => ({
+                      date: action.actionDate,
+                      milestone: action.text
+                    }))} />
                   </Box>
                 </VStack>
               </Box>
@@ -220,7 +275,11 @@ const BillSummary: React.FC<BillSummaryProps> = ({ bill }) => {
                 fontFamily="monospace"
                 whiteSpace="pre-wrap"
               >
-                {bill.textVersions[0]?.text || "Full bill text not available"}
+                {bill.textVersions.list[0]?.formats[0]?.url ? (
+                  <Text>Full bill text available at: {bill.textVersions.list[0].formats[0].url}</Text>
+                ) : (
+                  "Full bill text not available"
+                )}
               </Box>
             </Grid>
           </ModalBody>

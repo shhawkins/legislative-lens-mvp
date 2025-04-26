@@ -108,18 +108,21 @@ const getMemberPhotoUrl = (bioguideId: string): string => {
 const mockMember: Member = {
   id: 'M001',
   bioguideId: 'L000174',
-  name: 'Rep. John Doe',
+  firstName: 'John',
+  lastName: 'Doe',
+  fullName: 'John Doe',
   state: 'CA',
   district: '12',
   party: 'D',
-  photoUrl: getMemberPhotoUrl('L000174'),
+  chamber: 'house',
   committees: ['Energy and Commerce'],
+  photoUrl: 'https://via.placeholder.com/150',
   votingRecord: [{ billId: 'B001', vote: 'yes' }],
   contactInfo: 'john.doe@house.gov',
   reelectionDate: '2024-11-05',
   depiction: {
-    attribution: 'Courtesy U.S. Senate Historical Office',
-    imageUrl: getMemberPhotoUrl('L000174')
+    attribution: 'Official Congressional Photo',
+    imageUrl: 'https://via.placeholder.com/150'
   }
 };
 
@@ -808,7 +811,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
           <Box
             as="img"
             src={isLoading ? '/default-member-photo.jpg' : photoUrl}
-            alt={member.name}
+            alt={`${member.firstName} ${member.lastName}`}
             w={{ base: '120px', md: '150px' }}
             h={{ base: '120px', md: '150px' }}
             borderRadius="full"
@@ -817,7 +820,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
             borderColor={member.party === 'D' ? 'blue.500' : 'red.500'}
           />
           <Box>
-            <Heading size="lg">{member.name}</Heading>
+            <Heading size="lg">{member.fullName}</Heading>
             <Text fontSize="lg" color="gray.600">
               {member.state}{member.district ? `-${member.district}` : ''}
             </Text>
@@ -859,7 +862,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
           <Box>
             <Heading size="sm" mb={3}>Recent Voting Record</Heading>
             <Flex direction="column" gap={2}>
-              {member.votingRecord.map((record, index) => (
+              {member.votingRecord && member.votingRecord.map((record, index) => (
                 <Flex key={index} justify="space-between" align="center">
                   <Text fontSize="sm" isTruncated>Bill {record.billId}</Text>
                   <Box
@@ -878,7 +881,9 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
             
             <Box mt={6}>
               <Text fontSize="sm" color="gray.600">Next Election</Text>
-              <Text fontSize="md" fontWeight="medium">{member.reelectionDate}</Text>
+              {member.reelectionDate && (
+                <Text fontSize="md" fontWeight="medium">{member.reelectionDate}</Text>
+              )}
             </Box>
           </Box>
         </Grid>
@@ -908,7 +913,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
-            <Heading size="lg">{member.name}</Heading>
+            <Heading size="lg">{member.fullName}</Heading>
             <Text fontSize="sm" color="gray.500" mt={1}>
               {member.state}{member.district ? `-${member.district}` : ''} • {member.party === 'D' ? 'Democrat' : 'Republican'}
             </Text>
@@ -921,7 +926,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
                 <Box
                   as="img"
                   src={isLoading ? '/default-member-photo.jpg' : photoUrl}
-                  alt={member.name}
+                  alt={`${member.firstName} ${member.lastName}`}
                   w="100%"
                   maxW="300px"
                   borderRadius="lg"
@@ -932,9 +937,11 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
                 <Box mt={4}>
                   <Heading size="sm" mb={2}>Contact Information</Heading>
                   <Text fontSize="sm">{member.contactInfo}</Text>
-                  <Text fontSize="sm" color="gray.500" mt={1}>
-                    Next Election: {new Date(member.reelectionDate).toLocaleDateString()}
-                  </Text>
+                  {member.reelectionDate && (
+                    <Text fontSize="sm" color="gray.500" mt={1}>
+                      Next Election: {new Date(member.reelectionDate).toLocaleDateString()}
+                    </Text>
+                  )}
                 </Box>
               </Box>
 
@@ -974,7 +981,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
                     {/* Voting Record Panel */}
                     <TabPanel>
                       <VStack spacing={4} align="stretch">
-                        {member.votingRecord.map((record, index) => (
+                        {member.votingRecord && member.votingRecord.map((record, index) => (
                           <Card key={index} variant="outline">
                             <CardBody>
                               <Flex justify="space-between" align="center">
@@ -1007,7 +1014,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
                           <Box
                             as="img"
                             src={member.depiction.imageUrl}
-                            alt={`Official portrait of ${member.name}`}
+                            alt={`Official portrait of ${member.fullName}`}
                             w="100%"
                             maxW="400px"
                             borderRadius="lg"
@@ -1015,7 +1022,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
                           />
                         )}
                         <Text fontSize="md">
-                          {member.name} represents {member.state}{member.district ? `'s ${member.district}th district` : ''} in the {member.district ? 'House of Representatives' : 'Senate'}. 
+                          {member.fullName} represents {member.state}{member.district ? `'s ${member.district}th district` : ''} in the {member.district ? 'House of Representatives' : 'Senate'}. 
                           As a {member.party === 'D' ? 'Democrat' : 'Republican'}, they serve on the following committees: {member.committees.join(', ')}.
                         </Text>
                       </Box>
@@ -1294,6 +1301,7 @@ const EnhancedMap: React.FC<{
         isOpen={isStateModalOpen} 
         onClose={onStateModalClose} 
         stateCode={selectedState || ''} 
+        stateName={stateList.find(s => s.code === selectedState)?.name || ''}
       />
       <ZipCodeSearchModal
         isOpen={isZipModalOpen}
@@ -1577,13 +1585,13 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                             <Box
                               as="img"
                               src={member.photoUrl}
-                              alt={member.name}
+                              alt={`${member.firstName} ${member.lastName}`}
                               w="50px"
                               h="50px"
                               borderRadius="full"
                             />
                             <Box>
-                              <Heading size="sm">{member.name}</Heading>
+                              <Heading size="sm">{member.fullName}</Heading>
                               <Text fontSize="sm" color="gray.600">
                                 {member.state}{member.district ? `-${member.district}` : ''}
                               </Text>

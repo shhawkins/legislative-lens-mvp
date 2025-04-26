@@ -1,70 +1,57 @@
 # Legislative Lens
 
-A comprehensive web application for tracking and analyzing U.S. Congressional legislation, members, and committees.
+A React application for exploring and analyzing legislative data from Congress.gov.
 
 ## Features
 
-- Interactive map visualization of state and district-level data
-- Detailed legislative data dashboard
-- Advanced search and filtering capabilities
-- Responsive design with mobile support
-- Dark/light mode
-- Bill tracking system
-- Voting records and analysis
+- View and search bills
+- Track bill progress
+- View member information
 - Committee information
-- Legislator profiles
+- And more!
 
-## Tech Stack
+## Setup Instructions
 
-- React 18 with TypeScript
-- Chakra UI v3
-- React Simple Maps
-- Emotion for styling
-- Congress.gov API
-
-## Project Structure
-
-```
-src/
-├── components/
-│   ├── bill/         # Bill-related components
-│   ├── committee/    # Committee-related components
-│   ├── layout/       # Layout components
-│   ├── map/          # Map visualization components
-│   ├── member/       # Member-related components
-│   └── search/       # Search-related components
-├── types/            # TypeScript type definitions
-└── utils/            # Utility functions
-```
-
-## Getting Started
+### Local Development
 
 1. Clone the repository
 2. Install dependencies:
    ```bash
    npm install
    ```
-3. Start the development server:
+3. Create a `.env` file in the root directory with your Congress.gov API key:
+   ```
+   REACT_APP_CONGRESS_API_KEY=your_api_key_here
+   ```
+4. Start the development server:
    ```bash
    npm start
    ```
 
-## Development
+### CodeSandbox Setup
 
-- Follow TypeScript best practices
-- Use Chakra UI components for consistent styling
-- Maintain accessibility standards
-- Write tests for new components
-- Document component props and usage
+1. Fork this repository
+2. Create a new CodeSandbox project
+3. Import your forked repository
+4. Add your Congress.gov API key in CodeSandbox's environment variables:
+   - Go to "Server Control Panel" (or press Cmd/Ctrl + Shift + P)
+   - Select "Environment Variables"
+   - Add `REACT_APP_CONGRESS_API_KEY` with your API key
+5. The app should start automatically
+
+## API Key
+
+You'll need a Congress.gov API key to use this application. You can get one at:
+https://api.congress.gov/
+
+## Technologies Used
+
+- React
+- TypeScript
+- Chakra UI
+- Axios
+- React Router
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-
-MIT 
+Feel free to submit issues and enhancement requests! 

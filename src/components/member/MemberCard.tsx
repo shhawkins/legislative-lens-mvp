@@ -5,9 +5,10 @@ import { getMemberPhoto } from '../../services/imageProxy';
 
 interface MemberCardProps {
   member: Member;
+  showDistrict?: boolean;
 }
 
-export const MemberCard: React.FC<MemberCardProps> = ({ member }) => {
+export const MemberCard: React.FC<MemberCardProps> = ({ member, showDistrict }) => {
   const [photoUrl, setPhotoUrl] = useState<string>('/default-member-photo.jpg');
 
   useEffect(() => {
@@ -31,16 +32,22 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member }) => {
         <HStack gap={4}>
           <Image
             src={photoUrl}
-            alt={`${member.name}'s photo`}
+            alt={`${member.fullName}'s photo`}
             boxSize="100px"
             objectFit="cover"
             borderRadius="full"
           />
           <VStack align="start" gap={1}>
-            <Text fontWeight="bold" fontSize="lg">{member.name}</Text>
-            <Text>{member.state} - District {member.district}</Text>
+            <Text fontWeight="bold" fontSize="lg">{member.fullName}</Text>
+            <Text>
+              {member.state}
+              {showDistrict && member.district && ` - District ${member.district}`}
+            </Text>
             <Badge colorScheme={member.party === 'D' ? 'blue' : 'red'}>
               {member.party === 'D' ? 'Democrat' : 'Republican'}
+            </Badge>
+            <Badge colorScheme="purple">
+              {member.chamber.charAt(0).toUpperCase() + member.chamber.slice(1)}
             </Badge>
           </VStack>
         </HStack>
@@ -50,15 +57,19 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member }) => {
           <Text>{member.committees.join(', ')}</Text>
         </Box>
 
-        <Box>
-          <Text fontWeight="bold">Contact:</Text>
-          <Text>{member.contactInfo}</Text>
-        </Box>
+        {member.contactInfo && (
+          <Box>
+            <Text fontWeight="bold">Contact:</Text>
+            <Text>{member.contactInfo}</Text>
+          </Box>
+        )}
 
-        <Box>
-          <Text fontWeight="bold">Reelection Date:</Text>
-          <Text>{member.reelectionDate}</Text>
-        </Box>
+        {member.reelectionDate && (
+          <Box>
+            <Text fontWeight="bold">Reelection Date:</Text>
+            <Text>{member.reelectionDate}</Text>
+          </Box>
+        )}
       </VStack>
     </Box>
   );

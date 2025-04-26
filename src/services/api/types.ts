@@ -1,8 +1,16 @@
-// Base types for API responses
+// Base response type for all API calls
 export interface ApiResponse<T> {
-  data: T;
-  status: number;
-  message?: string;
+  pagination: {
+    count: number;
+    totalCount: number;
+  };
+  request: {
+    contentType: string;
+    format: string;
+  };
+  bills?: T[];
+  members?: T[];
+  committees?: T[];
 }
 
 // Bill related types
@@ -111,18 +119,18 @@ export interface Summary {
 
 export interface TextVersion {
   date: string;
+  type: string;
   formats: {
     type: string;
     url: string;
   }[];
-  type: string;
 }
 
 export interface Title {
   title: string;
-  titleType: string;
-  titleTypeCode: number;
-  updateDate: string;
+  type: string;
+  chamber: string;
+  chamberCode: string;
 }
 
 export interface RelatedBill {
@@ -143,16 +151,82 @@ export interface RelatedBill {
 export interface Law {
   number: string;
   type: string;
+  congress: number;
 }
 
 export interface CboCostEstimate {
-  description: string;
-  pubDate: string;
   title: string;
   url: string;
+  date: string;
 }
 
 export interface CommitteeReport {
-  citation: string;
+  number: string;
+  chamber: string;
+  chamberCode: string;
   url: string;
+}
+
+// Member related types
+export interface Member {
+  bioguideId: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  party: string;
+  state: string;
+  district: number;
+  chamber: string;
+  committees: {
+    name: string;
+    code: string;
+    type: string;
+    rank: string;
+  }[];
+  sponsoredBills: {
+    count: number;
+    list: {
+      congress: number;
+      number: string;
+      type: string;
+      title: string;
+    }[];
+  };
+  cosponsoredBills: {
+    count: number;
+    list: {
+      congress: number;
+      number: string;
+      type: string;
+      title: string;
+    }[];
+  };
+}
+
+// Committee related types
+export interface Committee {
+  name: string;
+  chamber: string;
+  type: string;
+  systemCode: string;
+  members: {
+    bioguideId: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    party: string;
+    state: string;
+    district: number;
+    rank: string;
+  }[];
+  subcommittees: {
+    name: string;
+    systemCode: string;
+  }[];
+  recentBills: {
+    congress: number;
+    number: string;
+    type: string;
+    title: string;
+  }[];
 } 

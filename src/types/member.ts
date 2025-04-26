@@ -2,7 +2,7 @@ import { BaseEntity, WithTimestamps, Party } from './common';
 
 export interface MemberVotingRecord {
   billId: string;
-  vote: 'yes' | 'no';
+  vote: 'yes' | 'no' | 'present' | 'not_voting';
 }
 
 export interface MemberDepiction {
@@ -10,18 +10,24 @@ export interface MemberDepiction {
   imageUrl: string;
 }
 
-export interface Member extends BaseEntity, WithTimestamps {
+export interface Member {
+  id: string;
   bioguideId: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
   state: string;
   district?: string;
-  party: Party;
-  photoUrl: string;
+  party: string;
+  chamber: string;
   committees: string[];
-  votingRecord: MemberVotingRecord[];
-  contactInfo: string;
-  reelectionDate: string;
+  contactInfo?: string;
+  reelectionDate?: string;
+  photoUrl?: string;
+  votingRecord?: MemberVotingRecord[];
   depiction?: MemberDepiction;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface StateMembers {
@@ -37,4 +43,29 @@ export interface MemberSearchParams {
   committee?: string;
   page?: number;
   pageSize?: number;
+}
+
+/**
+ * Converts an API member to our application's Member type
+ */
+export function convertApiMember(apiMember: any): Member {
+  return {
+    id: apiMember.id || apiMember.bioguideId,
+    bioguideId: apiMember.bioguideId,
+    firstName: apiMember.firstName,
+    lastName: apiMember.lastName,
+    fullName: apiMember.fullName,
+    state: apiMember.state,
+    district: apiMember.district,
+    party: apiMember.party,
+    chamber: apiMember.chamber,
+    committees: apiMember.committees || [],
+    contactInfo: apiMember.contactInfo,
+    reelectionDate: apiMember.reelectionDate,
+    photoUrl: apiMember.photoUrl,
+    votingRecord: apiMember.votingRecord,
+    depiction: apiMember.depiction,
+    createdAt: apiMember.createdAt,
+    updatedAt: apiMember.updatedAt
+  };
 } 

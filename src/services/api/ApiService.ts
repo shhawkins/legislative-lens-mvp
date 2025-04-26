@@ -1,5 +1,5 @@
 import { API_CONFIG, API_KEY } from './config';
-import { ApiResponse, Bill } from './types';
+import { ApiResponse, Bill, Member, Committee } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -16,6 +16,8 @@ export class ApiService {
   private static instance: ApiService;
   private baseUrl: string;
   private headers: HeadersInit;
+  private readonly MAX_RETRIES = 3;
+  private readonly RETRY_DELAY = 1000; // 1 second
 
   private constructor() {
     this.baseUrl = API_CONFIG.BASE_URL;
@@ -32,65 +34,203 @@ export class ApiService {
     return ApiService.instance;
   }
 
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    if (!response.ok) {
-      throw new ApiError(
-        `API request failed with status ${response.status}`,
-        response.status,
-        await response.json()
-      );
-    }
-
-    const data = await response.json();
-    return {
-      data,
-      status: response.status,
-      message: 'Success'
-    };
-  }
-
-  private formatEndpoint(endpoint: string, params: Record<string, string>): string {
-    let formattedEndpoint = endpoint;
-    Object.entries(params).forEach(([key, value]) => {
-      formattedEndpoint = formattedEndpoint.replace(`{${key}}`, value);
-    });
-    return formattedEndpoint;
-  }
-
-  /**
-   * Fetches bill information from the Congress.gov API
-   * @param congress - Congress number (e.g., 117)
-   * @param type - Bill type (e.g., 'hr' for House Bill)
-   * @param number - Bill number
-   * @returns Promise with bill data
-   */
-  public async getBill(congress: string, type: string, number: string): Promise<ApiResponse<Bill>> {
+  private async fetchWithRetry<T>(
+    endpoint: string,
+    options: RequestInit,
+    params?: Record<string, any>,
+    retries = this.MAX_RETRIES
+  ): Promise<T> {
     try {
-      const endpoint = this.formatEndpoint(API_CONFIG.ENDPOINTS.BILL, {
-        congress,
-        type,
-        number
-      });
+      const url = new URL(`${this.baseUrl}${endpoint}`);
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          url.searchParams.append(key, value.toString());
+        });
+      }
 
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        method: 'GET',
+      const response = await fetch(url.toString(), {
+        ...options,
         headers: this.headers
       });
 
-      return this.handleResponse<Bill>(response);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new ApiError(
+          `HTTP error! status: ${response.status}`,
+          response.status,
+          errorData
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (retries > 0 && error instanceof ApiError && (error.status || 0) >= 500) {
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
+        return this.fetchWithRetry(endpoint, options, params, retries - 1);
+      }
+      throw error;
+    }
+  }
+
+  private formatEndpoint(endpoint: string, params: Record<string, string>): string {
+    return endpoint.replace(/\{(\w+)\}/g, (_, key) => params[key] || '');
+  }
+
+  // Bill endpoints
+  public async getBills(
+    congress: number = 118,
+    offset: number = 0,
+    limit: number = 20
+  ): Promise<ApiResponse<Bill>> {
+    try {
+      return await this.fetchWithRetry<ApiResponse<Bill>>(
+        `/bill/${congress}`,
+        {
+          method: 'GET'
+        },
+        {
+          offset,
+          limit
+        }
+      );
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
       throw new ApiError(
-        'Failed to fetch bill data',
+        'Failed to fetch bills',
         500,
         error
       );
     }
   }
 
-  // Example usage:
-  // const api = ApiService.getInstance();
-  // const bill = await api.getBill('117', 'hr', '3076');
+  public async getBillById(
+    congress: number,
+    billType: string,
+    billNumber: string
+  ): Promise<ApiResponse<Bill>> {
+    try {
+      return await this.fetchWithRetry<ApiResponse<Bill>>(
+        `/bill/${congress}/${billType}/${billNumber}`,
+        {
+          method: 'GET'
+        }
+      );
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(
+        'Failed to fetch bill',
+        500,
+        error
+      );
+    }
+  }
+
+  // Member endpoints
+  public async getMembers(
+    congress: number = 118,
+    chamber: 'house' | 'senate',
+    offset: number = 0,
+    limit: number = 20
+  ): Promise<ApiResponse<Member>> {
+    try {
+      return await this.fetchWithRetry<ApiResponse<Member>>(
+        `/member/${chamber}/${congress}`,
+        {
+          method: 'GET'
+        },
+        {
+          offset,
+          limit
+        }
+      );
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(
+        'Failed to fetch members',
+        500,
+        error
+      );
+    }
+  }
+
+  public async getMemberById(bioguideId: string): Promise<ApiResponse<Member>> {
+    try {
+      return await this.fetchWithRetry<ApiResponse<Member>>(
+        `/member/${bioguideId}`,
+        {
+          method: 'GET'
+        }
+      );
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(
+        'Failed to fetch member',
+        500,
+        error
+      );
+    }
+  }
+
+  // Committee endpoints
+  public async getCommittees(
+    congress: number = 118,
+    type: 'house' | 'senate' | 'joint',
+    offset: number = 0,
+    limit: number = 20
+  ): Promise<ApiResponse<Committee>> {
+    try {
+      return await this.fetchWithRetry<ApiResponse<Committee>>(
+        `/committee/${type}/${congress}`,
+        {
+          method: 'GET'
+        },
+        {
+          offset,
+          limit
+        }
+      );
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(
+        'Failed to fetch committees',
+        500,
+        error
+      );
+    }
+  }
+
+  public async getCommitteeById(
+    congress: number,
+    type: string,
+    committeeId: string
+  ): Promise<ApiResponse<Committee>> {
+    try {
+      return await this.fetchWithRetry<ApiResponse<Committee>>(
+        `/committee/${type}/${congress}/${committeeId}`,
+        {
+          method: 'GET'
+        }
+      );
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(
+        'Failed to fetch committee',
+        500,
+        error
+      );
+    }
+  }
 } 

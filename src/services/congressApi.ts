@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_KEY = process.env.REACT_APP_CONGRESS_API_KEY;
-const BASE_URL = 'https://api.congress.gov/v3';
+const BASE_URL = 'https://corsproxy.io/?https://api.congress.gov/v3';
 
 const api = axios.create({
   baseURL: BASE_URL,

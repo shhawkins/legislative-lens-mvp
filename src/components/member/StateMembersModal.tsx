@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -23,88 +23,64 @@ import {
   TabPanel,
   Tooltip,
   useColorModeValue,
+  Spinner,
 } from '@chakra-ui/react';
 import { ExternalLinkIcon } from '@chakra-ui/icons';
-import { Member } from '../../types/member';
+import { Member, convertApiMember } from '../../types/member';
 import { Party } from '../../types/common';
+import { ApiService } from '../../services/api/ApiService';
+import { Member as ApiMember } from '../../services/api/types';
 
-const senatorAlex: Member = {
-  id: 'S001',
-  bioguideId: 'K000377',
-  name: 'Sen. Alex Smith',
-  state: 'CA',
-  party: 'D',
-  photoUrl: 'https://via.placeholder.com/150',
-  committees: ['Judiciary', 'Finance'],
-  votingRecord: [{ billId: 'B001', vote: 'yes' }],
-  contactInfo: 'alex.smith@senate.gov',
-  reelectionDate: '2024-11-05',
-  depiction: {
-    attribution: 'Courtesy U.S. Senate Historical Office',
-    imageUrl: 'https://via.placeholder.com/150'
+const mockMembers: Member[] = [
+  {
+    id: 'S001',
+    bioguideId: 'K000377',
+    firstName: 'Alex',
+    lastName: 'Smith',
+    fullName: 'Alex Smith',
+    state: 'CA',
+    party: 'D',
+    chamber: 'senate',
+    committees: ['Judiciary', 'Finance'],
+    photoUrl: 'https://via.placeholder.com/150',
+    contactInfo: 'alex.smith@senate.gov',
+    depiction: {
+      attribution: 'Courtesy U.S. Senate Historical Office',
+      imageUrl: 'https://via.placeholder.com/150'
+    }
   },
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString()
-};
-
-const senatorMaria: Member = {
-  id: 'S002',
-  bioguideId: 'G000789',
-  name: 'Sen. Maria Garcia',
-  state: 'CA',
-  party: 'D',
-  photoUrl: 'https://via.placeholder.com/150',
-  committees: ['Energy', 'Foreign Relations'],
-  votingRecord: [{ billId: 'B002', vote: 'no' }],
-  contactInfo: 'maria.garcia@senate.gov',
-  reelectionDate: '2026-11-05',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString()
-};
-
-const repJohn: Member = {
-  id: 'R001',
-  bioguideId: 'L000174',
-  name: 'Rep. John Doe',
-  state: 'CA',
-  district: '12',
-  party: 'D',
-  photoUrl: 'https://via.placeholder.com/150',
-  committees: ['Energy and Commerce'],
-  votingRecord: [{ billId: 'B003', vote: 'yes' }],
-  contactInfo: 'john.doe@house.gov',
-  reelectionDate: '2024-11-05',
-  depiction: {
-    attribution: 'Courtesy U.S. House Historical Office',
-    imageUrl: 'https://via.placeholder.com/150'
+  {
+    id: 'S002',
+    bioguideId: 'G000789',
+    firstName: 'Maria',
+    lastName: 'Garcia',
+    fullName: 'Maria Garcia',
+    state: 'CA',
+    party: 'D',
+    chamber: 'senate',
+    committees: ['Energy', 'Foreign Relations'],
+    photoUrl: 'https://via.placeholder.com/150',
+    contactInfo: 'maria.garcia@senate.gov'
   },
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString()
-};
-
-const repJane: Member = {
-  id: 'R002',
-  bioguideId: 'S000456',
-  name: 'Rep. Jane Smith',
-  state: 'CA',
-  district: '15',
-  party: 'R',
-  photoUrl: 'https://via.placeholder.com/150',
-  committees: ['Ways and Means'],
-  votingRecord: [{ billId: 'B004', vote: 'no' }],
-  contactInfo: 'jane.smith@house.gov',
-  reelectionDate: '2024-11-05',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString()
-};
-
-// Mock data for development - this will be replaced with API data later
-const mockStateMembers: Record<string, { senators: Member[], representatives: Member[] }> = {
-  CA: {
-    senators: [senatorAlex, senatorMaria],
-    representatives: [repJohn, repJane]
+  {
+    id: 'R001',
+    bioguideId: 'L000174',
+    firstName: 'John',
+    lastName: 'Doe',
+    fullName: 'John Doe',
+    state: 'CA',
+    district: '12',
+    party: 'D',
+    chamber: 'house',
+    committees: ['Energy and Commerce'],
+    photoUrl: 'https://via.placeholder.com/150',
+    contactInfo: 'john.doe@house.gov',
+    depiction: {
+      attribution: 'Courtesy U.S. House Historical Office',
+      imageUrl: 'https://via.placeholder.com/150'
+    }
   }
-};
+];
 
 const stateList = [
   { code: 'AL', name: 'Alabama' },
@@ -159,141 +135,192 @@ const stateList = [
   { code: 'WY', name: 'Wyoming' }
 ];
 
-interface MemberCardProps {
-  member: Member;
-  showDistrict?: boolean;
+interface StateMembersModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  stateCode: string;
+  stateName: string;
 }
 
-const MemberCard: React.FC<MemberCardProps> = ({ member, showDistrict = false }) => {
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  
+const MemberCard: React.FC<{ member: Member; showDistrict?: boolean }> = ({ member, showDistrict = false }) => {
+  const cardBg = useColorModeValue('white', 'gray.700');
+  const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const partyColor = member.party === 'D' ? 'blue.500' : member.party === 'R' ? 'red.500' : 'purple.500';
+
   return (
-    <Card variant="outline" bg={cardBg} borderColor={borderColor}>
+    <Card 
+      bg={cardBg} 
+      border="1px" 
+      borderColor={borderColor}
+      _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
+      transition="all 0.2s"
+    >
       <CardBody>
-        <Flex gap={4}>
-          <Box
-            as="img"
-            src={member.photoUrl}
-            alt={member.name}
-            w="70px"
-            h="70px"
-            borderRadius="full"
-            objectFit="cover"
-          />
-          <Box flex="1">
-            <Flex justify="space-between" align="start">
-              <Box>
-                <Heading size="sm">{member.name}</Heading>
-                <Flex gap={2} mt={1} align="center">
-                  <Badge colorScheme={member.party === 'D' ? 'blue' : 'red'}>
-                    {member.party === 'D' ? 'Democrat' : 'Republican'}
-                  </Badge>
-                  {showDistrict && member.district && (
-                    <Badge colorScheme="purple">District {member.district}</Badge>
-                  )}
-                </Flex>
-              </Box>
-              <Link href={`mailto:${member.contactInfo}`} isExternal>
-                <ExternalLinkIcon />
-              </Link>
-            </Flex>
-            <Text fontSize="sm" color="gray.600" mt={2}>
-              {member.committees.join(', ')}
-            </Text>
-            <Tooltip label={`Next election: ${member.reelectionDate}`}>
-              <Text fontSize="xs" color="gray.500" mt={1}>
-                Term ends: {new Date(member.reelectionDate).getFullYear()}
+        <Flex direction="column" gap={3}>
+          <Flex justify="space-between" align="center">
+            <VStack align="start" spacing={0}>
+              <Heading size="md">
+                {member.firstName} {member.lastName}
+              </Heading>
+              <Text fontSize="sm" color="gray.500">
+                {member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent'}
               </Text>
-            </Tooltip>
-          </Box>
+            </VStack>
+            <Badge 
+              colorScheme={member.party === 'D' ? 'blue' : member.party === 'R' ? 'red' : 'purple'}
+              fontSize="md"
+              px={3}
+              py={1}
+            >
+              {member.party}
+            </Badge>
+          </Flex>
+
+          {showDistrict && member.district && (
+            <Text fontSize="sm" color="gray.600">
+              District {member.district}
+            </Text>
+          )}
+
+          <Flex gap={2} wrap="wrap">
+            {member.committees?.map(committee => (
+              <Tooltip key={committee} label={committee}>
+                <Badge colorScheme="gray" fontSize="xs">
+                  {committee}
+                </Badge>
+              </Tooltip>
+            ))}
+          </Flex>
+
+          <Flex justify="space-between" align="center" mt="auto">
+            <Text fontSize="sm" color="gray.500">
+              {member.chamber === 'senate' ? 'Senator' : 'Representative'} from {member.state}
+            </Text>
+            <Link 
+              href={`https://www.congress.gov/member/${member.firstName.toLowerCase()}-${member.lastName.toLowerCase()}/${member.bioguideId}`}
+              isExternal
+              color={partyColor}
+            >
+              View Profile <ExternalLinkIcon mx="2px" />
+            </Link>
+          </Flex>
         </Flex>
       </CardBody>
     </Card>
   );
 };
 
-interface StateMembersModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  stateCode: string;
-}
+const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, stateCode, stateName }) => {
+  const [activeTab, setActiveTab] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [senators, setSenators] = useState<Member[]>([]);
+  const [representatives, setRepresentatives] = useState<Member[]>([]);
 
-export const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, stateCode }) => {
-  const stateMembers = mockStateMembers[stateCode as keyof typeof mockStateMembers] || { senators: [], representatives: [] };
-  const stateName = stateList.find(state => state.code === stateCode)?.name || stateCode;
-  const modalBg = useColorModeValue('white', 'gray.800');
+  useEffect(() => {
+    const fetchMembers = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Fetch members from API
+        const apiService = ApiService.getInstance();
+        const [senatorsResponse, repsResponse] = await Promise.all([
+          apiService.getMembers(118, 'senate'),
+          apiService.getMembers(118, 'house')
+        ]);
+
+        // Filter by state and convert API members to our Member type
+        setSenators(
+          (senatorsResponse.members?.filter((m: ApiMember) => m.state === stateCode) || [])
+            .map(convertApiMember)
+        );
+        setRepresentatives(
+          (repsResponse.members?.filter((m: ApiMember) => m.state === stateCode) || [])
+            .map(convertApiMember)
+        );
+      } catch (err) {
+        setError('Failed to fetch members. Please try again later.');
+        console.error('Error fetching members:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchMembers();
+    }
+  }, [isOpen, stateCode]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="6xl">
       <ModalOverlay />
-      <ModalContent bg={modalBg}>
+      <ModalContent>
         <ModalHeader>
           <Heading size="lg">Congressional Delegation: {stateName}</Heading>
-          <Text fontSize="sm" color="gray.500" mt={1}>
+          <Text fontSize="md" color="gray.600" mt={2}>
             Senators and Representatives currently serving {stateName}
           </Text>
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody pb={6}>
-          <Tabs variant="soft-rounded" colorScheme="blue">
-            <TabList mb={4}>
-              <Tab>All Members</Tab>
-              <Tab>Senators ({stateMembers.senators.length})</Tab>
-              <Tab>Representatives ({stateMembers.representatives.length})</Tab>
-            </TabList>
-            <TabPanels>
-              {/* All Members Panel */}
-              <TabPanel px={0}>
-                <VStack spacing={6} align="stretch">
-                  <Box>
-                    <Heading size="md" mb={4}>Senators</Heading>
-                    <Grid templateColumns="repeat(auto-fill, minmax(400px, 1fr))" gap={4}>
-                      {stateMembers.senators.map((senator) => (
+          {isLoading ? (
+            <Flex justify="center" align="center" minH="300px">
+              <Spinner size="xl" />
+            </Flex>
+          ) : error ? (
+            <Text color="red.500">{error}</Text>
+          ) : (
+            <Tabs index={activeTab} onChange={setActiveTab}>
+              <TabList>
+                <Tab>All Members</Tab>
+                <Tab>Senators</Tab>
+                <Tab>Representatives</Tab>
+              </TabList>
+
+              <TabPanels>
+                <TabPanel>
+                  <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={6}>
+                    {senators.length === 0 && representatives.length === 0 ? (
+                      <Text>No members found for this state.</Text>
+                    ) : (
+                      <>
+                        {senators.map(senator => (
+                          <MemberCard key={senator.id} member={senator} />
+                        ))}
+                        {representatives.map(rep => (
+                          <MemberCard key={rep.id} member={rep} showDistrict />
+                        ))}
+                      </>
+                    )}
+                  </Grid>
+                </TabPanel>
+
+                <TabPanel>
+                  <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={6}>
+                    {senators.length === 0 ? (
+                      <Text>No senators found for {stateName}</Text>
+                    ) : (
+                      senators.map(senator => (
                         <MemberCard key={senator.id} member={senator} />
-                      ))}
-                    </Grid>
-                  </Box>
-                  <Box>
-                    <Heading size="md" mb={4}>House Representatives</Heading>
-                    <Grid templateColumns="repeat(auto-fill, minmax(400px, 1fr))" gap={4}>
-                      {stateMembers.representatives.map((rep) => (
+                      ))
+                    )}
+                  </Grid>
+                </TabPanel>
+
+                <TabPanel>
+                  <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={6}>
+                    {representatives.length === 0 ? (
+                      <Text>No representatives found for {stateName}</Text>
+                    ) : (
+                      representatives.map(rep => (
                         <MemberCard key={rep.id} member={rep} showDistrict />
-                      ))}
-                    </Grid>
-                  </Box>
-                </VStack>
-              </TabPanel>
-              
-              {/* Senators Panel */}
-              <TabPanel px={0}>
-                <Grid templateColumns="repeat(auto-fill, minmax(400px, 1fr))" gap={4}>
-                  {stateMembers.senators.map((senator) => (
-                    <MemberCard key={senator.id} member={senator} />
-                  ))}
-                </Grid>
-                {stateMembers.senators.length === 0 && (
-                  <Text color="gray.500" textAlign="center" py={8}>
-                    No senators found for {stateName}
-                  </Text>
-                )}
-              </TabPanel>
-              
-              {/* Representatives Panel */}
-              <TabPanel px={0}>
-                <Grid templateColumns="repeat(auto-fill, minmax(400px, 1fr))" gap={4}>
-                  {stateMembers.representatives.map((rep) => (
-                    <MemberCard key={rep.id} member={rep} showDistrict />
-                  ))}
-                </Grid>
-                {stateMembers.representatives.length === 0 && (
-                  <Text color="gray.500" textAlign="center" py={8}>
-                    No representatives found for {stateName}
-                  </Text>
-                )}
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
+                      ))
+                    )}
+                  </Grid>
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+          )}
         </ModalBody>
       </ModalContent>
     </Modal>
