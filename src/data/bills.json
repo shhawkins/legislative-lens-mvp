@@ -5,7 +5,7 @@
     "billType": "HR",
     "title": "To amend the Internal Revenue Code of 1986 to provide tax relief for middle-class families",
     "sponsor": {
-      "bioguideId": "S001184",
+      "id": "H000000",
       "firstName": "John",
       "lastName": "Smith",
       "party": "D",
@@ -26,7 +26,7 @@
     "billType": "S",
     "title": "A bill to improve access to healthcare in rural areas",
     "sponsor": {
-      "bioguideId": "J000293",
+      "id": "H000001",
       "firstName": "Jane",
       "lastName": "Johnson",
       "party": "R",
@@ -47,20 +47,20 @@
     "billType": "HR",
     "title": "Clean Energy Innovation and Transition Act",
     "sponsor": {
-      "bioguideId": "G000587",
-      "firstName": "Sarah",
-      "lastName": "Green",
+      "id": "H000002",
+      "firstName": "Robert",
+      "lastName": "Davis",
       "party": "D",
-      "state": "WA"
+      "state": "CA"
     },
-    "introducedDate": "2023-01-10",
+    "introducedDate": "2023-01-05",
     "latestAction": {
-      "actionDate": "2023-04-15",
-      "text": "Passed House, received in Senate"
+      "actionDate": "2023-03-15",
+      "text": "Referred to the Committee on Energy and Commerce"
     },
-    "status": "PASS_OVER:HOUSE",
-    "summary": "Comprehensive legislation to accelerate the transition to clean energy through investment in renewable technologies and grid modernization.",
-    "policyArea": "Energy and Environment"
+    "status": "REFERRED",
+    "summary": "This bill promotes clean energy innovation and provides funding for renewable energy research and development.",
+    "policyArea": "Energy"
   },
   {
     "congress": 118,
@@ -103,5 +103,26 @@
     "status": "ENACTED:SIGNED",
     "summary": "Expands mental health services for veterans and provides additional funding for VA mental health facilities and programs.",
     "policyArea": "Armed Forces and National Security"
+  },
+  {
+    "congress": 0,
+    "billNumber": 0,
+    "billType": "",
+    "title": "",
+    "sponsor": {
+      "bioguideId": "",
+      "firstName": "",
+      "lastName": "",
+      "party": "",
+      "state": ""
+    },
+    "introducedDate": "",
+    "latestAction": {
+      "actionDate": "",
+      "text": ""
+    },
+    "status": "",
+    "summary": "",
+    "policyArea": ""
   }
 ]

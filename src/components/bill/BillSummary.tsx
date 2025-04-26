@@ -15,20 +15,19 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  Select,
   Text,
   VStack,
   useDisclosure,
   Spinner,
 } from '@chakra-ui/react';
-import { Bill } from '../../services/api/types';
-import { Committee } from '../../types/committee';
+import { staticDataService } from '../../services/staticDataService';
 import Timeline from './Timeline';
 import CommitteeModal from '../committee/CommitteeModal';
-import { ApiService } from '../../services/api/ApiService';
 
 interface BillSummaryProps {
   billId: string;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 /**
@@ -38,23 +37,28 @@ interface BillSummaryProps {
  * 
  * @param {BillSummaryProps} props - Component props
  * @param {string} props.billId - The bill ID in format "congress-type-number" (e.g., "118-hr-1234")
+ * @param {boolean} [props.isOpen] - Whether the modal is open
+ * @param {() => void} [props.onClose] - Callback to close the modal
  * @returns {JSX.Element} Bill summary component
  */
-const BillSummary: React.FC<BillSummaryProps> = ({ billId }) => {
-  const [bill, setBill] = useState<Bill | null>(null);
+const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen: externalIsOpen, onClose: externalOnClose }) => {
+  const [bill, setBill] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: internalIsOpen, onOpen: internalOnOpen, onClose: internalOnClose } = useDisclosure();
   const { isOpen: isCommitteeOpen, onOpen: onCommitteeOpen, onClose: onCommitteeClose } = useDisclosure();
-  const [selectedCommittee, setSelectedCommittee] = useState<Committee | null>(null);
+  const [selectedCommittee, setSelectedCommittee] = useState<any | null>(null);
+
+  // Use external isOpen/onClose if provided, otherwise use internal state
+  const isOpen = externalIsOpen ?? internalIsOpen;
+  const onClose = externalOnClose ?? internalOnClose;
 
   useEffect(() => {
-    const fetchBill = async () => {
+    const fetchBill = () => {
       try {
         const [congress, type, number] = billId.split('-');
-        const apiService = ApiService.getInstance();
-        const response = await apiService.getBillById(parseInt(congress), type, number);
-        setBill(response.bills?.[0] || null);
+        const bill = staticDataService.getBillById(parseInt(congress), type, parseInt(number));
+        setBill(bill);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching bill:', err);
@@ -67,19 +71,11 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId }) => {
   }, [billId]);
 
   const handleCommitteeClick = (committeeName: string) => {
-    // In a real implementation, this would fetch committee data from the API
-    // For now, we'll use mock data
-    setSelectedCommittee({
-      id: "HSIF",
-      name: committeeName,
-      chamber: "house",
-      congress: 118,
-      subcommittees: [],
-      members: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-    onCommitteeOpen();
+    const committee = staticDataService.getCommittees().find(c => c.name === committeeName);
+    if (committee) {
+      setSelectedCommittee(committee);
+      onCommitteeOpen();
+    }
   };
 
   if (loading) {
@@ -118,36 +114,26 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId }) => {
               </CardHeader>
               <CardBody>
                 <Text fontSize="md" lineHeight="tall">
-                  {bill.summaries.list[0]?.text || 'No summary available'}
+                  {bill.summary || 'No summary available'}
                 </Text>
-                <Text mt={4}><strong>Status:</strong> {bill.latestAction.text}</Text>
+                <Text mt={4}><strong>Status:</strong> {bill.status}</Text>
                 <Text>
-                  <strong>Sponsors:</strong>{' '}
-                  {bill.sponsors.map((sponsor, index) => (
-                    <React.Fragment key={sponsor.bioguideId}>
-                      {index > 0 && ', '}
-                      {sponsor.fullName}
-                    </React.Fragment>
-                  ))}
+                  <strong>Sponsor:</strong>{' '}
+                  {bill.sponsor.firstName} {bill.sponsor.lastName} ({bill.sponsor.party}-{bill.sponsor.state})
                 </Text>
                 <Text>
-                  <strong>Committees:</strong>{' '}
-                  {bill.committees.list.map((committee, index) => (
-                    <React.Fragment key={committee.systemCode}>
-                      {index > 0 && ', '}
-                      <Box
-                        as="span"
-                        color="blue.500"
-                        cursor="pointer"
-                        _hover={{ textDecoration: 'underline' }}
-                        onClick={() => handleCommitteeClick(committee.name)}
-                      >
-                        {committee.name}
-                      </Box>
-                    </React.Fragment>
-                  ))}
+                  <strong>Committee:</strong>{' '}
+                  <Box
+                    as="span"
+                    color="blue.500"
+                    cursor="pointer"
+                    _hover={{ textDecoration: 'underline' }}
+                    onClick={() => handleCommitteeClick(bill.latestAction.text.split('Committee on ')[1]?.split('.')[0] || '')}
+                  >
+                    {bill.latestAction.text.split('Committee on ')[1]?.split('.')[0] || 'Unknown Committee'}
+                  </Box>
                 </Text>
-                <Button mt={4} onClick={onOpen}>View Full Details</Button>
+                <Button mt={4} onClick={internalOnOpen}>View Full Details</Button>
               </CardBody>
             </Card>
           </Box>
@@ -160,11 +146,9 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId }) => {
           </CardHeader>
           <CardBody>
             <VStack spacing={4} align="stretch">
-              {bill.subjects.legislativeSubjects.map((subject, index) => (
-                <Text key={index} fontSize="md">
-                  • {subject.name}
-                </Text>
-              ))}
+              <Text fontSize="md">• Policy Area: {bill.policyArea}</Text>
+              <Text fontSize="md">• Introduced: {new Date(bill.introducedDate).toLocaleDateString()}</Text>
+              <Text fontSize="md">• Latest Action: {bill.latestAction.text}</Text>
             </VStack>
           </CardBody>
         </Card>
@@ -185,18 +169,6 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId }) => {
           <ModalHeader>
             <Flex justify="space-between" align="center">
               <Heading size="md">{bill.title}</Heading>
-              <Select
-                placeholder="Select version"
-                size="sm"
-                width="200px"
-                defaultValue={bill.textVersions.list[0]?.type}
-              >
-                {bill.textVersions.list.map((version) => (
-                  <option key={version.date} value={version.type}>
-                    {version.type} - {new Date(version.date).toLocaleDateString()}
-                  </option>
-                ))}
-              </Select>
             </Flex>
           </ModalHeader>
           <ModalCloseButton />
@@ -207,30 +179,30 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId }) => {
                 <VStack spacing={6} align="stretch">
                   <Box>
                     <Heading size="sm" mb={2}>Summary</Heading>
-                    <Text>{bill.summaries.list[0]?.text || 'No summary available'}</Text>
+                    <Text>{bill.summary || 'No summary available'}</Text>
                   </Box>
                   <Box>
                     <Heading size="sm" mb={2}>Status</Heading>
-                    <Text>{bill.latestAction.text}</Text>
+                    <Text>{bill.status}</Text>
                   </Box>
                   <Box>
-                    <Heading size="sm" mb={2}>Sponsors</Heading>
+                    <Heading size="sm" mb={2}>Sponsor</Heading>
                     <Text>
-                      {bill.sponsors.map(sponsor => sponsor.fullName).join(', ')}
+                      {bill.sponsor.firstName} {bill.sponsor.lastName} ({bill.sponsor.party}-{bill.sponsor.state})
                     </Text>
                   </Box>
                   <Box>
-                    <Heading size="sm" mb={2}>Committees</Heading>
+                    <Heading size="sm" mb={2}>Committee</Heading>
                     <Text>
-                      {bill.committees.list.map(committee => committee.name).join(', ')}
+                      {bill.latestAction.text.split('Committee on ')[1]?.split('.')[0] || 'Unknown Committee'}
                     </Text>
                   </Box>
                   <Box>
                     <Heading size="sm" mb={2}>Timeline</Heading>
-                    <Timeline timeline={bill.actions.list.map(action => ({
-                      date: action.actionDate,
-                      milestone: action.text
-                    }))} />
+                    <Timeline events={[
+                      { date: bill.introducedDate, text: 'Introduced' },
+                      { date: bill.latestAction.actionDate, text: bill.latestAction.text }
+                    ]} />
                   </Box>
                 </VStack>
               </Box>
@@ -240,46 +212,18 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId }) => {
                 position="relative" 
                 cursor="col-resize" 
                 _hover={{ bg: "gray.100" }}
-                onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-                  const startX = e.clientX;
-                  const parentElement = e.currentTarget?.parentElement as HTMLDivElement | null;
-                  const leftPanel = parentElement?.firstElementChild as HTMLDivElement | null;
-                  const startWidth = leftPanel?.offsetWidth || 0;
-                  
-                  const handleMouseMove = (e: MouseEvent) => {
-                    const delta = e.clientX - startX;
-                    const newWidth = Math.min(Math.max(startWidth + delta, 300), 600);
-                    if (leftPanel) {
-                      leftPanel.style.width = `${newWidth}px`;
-                    }
-                  };
-                  
-                  const handleMouseUp = () => {
-                    document.removeEventListener('mousemove', handleMouseMove);
-                    document.removeEventListener('mouseup', handleMouseUp);
-                  };
-                  
-                  document.addEventListener('mousemove', handleMouseMove);
-                  document.addEventListener('mouseup', handleMouseUp);
-                }}
-              >
-                <Box borderLeft="2px" borderColor="gray.200" h="100%" />
-              </Box>
+              />
 
               {/* Right Panel - Bill Text */}
-              <Box
-                overflowY="auto"
-                bg="gray.50"
-                borderRadius="md"
-                p={4}
-                fontFamily="monospace"
-                whiteSpace="pre-wrap"
-              >
-                {bill.textVersions.list[0]?.formats[0]?.url ? (
-                  <Text>Full bill text available at: {bill.textVersions.list[0].formats[0].url}</Text>
-                ) : (
-                  "Full bill text not available"
-                )}
+              <Box overflowY="auto" pl={4}>
+                <VStack spacing={6} align="stretch">
+                  <Box>
+                    <Heading size="sm" mb={2}>Bill Text</Heading>
+                    <Text>
+                      {bill.summary || 'No bill text available'}
+                    </Text>
+                  </Box>
+                </VStack>
               </Box>
             </Grid>
           </ModalBody>

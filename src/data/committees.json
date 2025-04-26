@@ -16,7 +16,8 @@
         "subcommitteeId": "HSWM02",
         "name": "Subcommittee on Tax"
       }
-    ]
+    ],
+    "image": "https://placehold.co/100x100?text=Committee"
   },
   {
     "congress": 118,
@@ -35,7 +36,8 @@
         "subcommitteeId": "SSHR02",
         "name": "Subcommittee on Children and Families"
       }
-    ]
+    ],
+    "image": "https://placehold.co/100x100?text=Committee"
   },
   {
     "congress": 118,
@@ -54,7 +56,8 @@
         "subcommitteeId": "HSIF02",
         "name": "Subcommittee on Health"
       }
-    ]
+    ],
+    "image": "https://placehold.co/100x100?text=Committee"
   },
   {
     "congress": 118,
@@ -73,7 +76,8 @@
         "subcommitteeId": "SSFN02",
         "name": "Subcommittee on Health Care"
       }
-    ]
+    ],
+    "image": "https://placehold.co/100x100?text=Committee"
   },
   {
     "congress": 118,
@@ -92,6 +96,14 @@
         "subcommitteeId": "HSVA02",
         "name": "Subcommittee on Economic Opportunity"
       }
-    ]
+    ],
+    "image": "https://placehold.co/100x100?text=Committee"
+  },
+  {
+    "committeeId": "",
+    "name": "",
+    "chamber": "",
+    "congress": 0,
+    "subcommittees": []
   }
 ]

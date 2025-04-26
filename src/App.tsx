@@ -68,6 +68,9 @@ import { Member } from './types/member';
 import { Committee } from './types/committee';
 import theme from './theme';
 import ApiTest from './components/test/ApiTest';
+import BillList from './components/bill/BillList';
+import { staticDataService } from './services/staticDataService';
+import BillSummary from './components/bill/BillSummary';
 
 // Mock data
 const mockBill: Bill = {
@@ -573,190 +576,6 @@ const CommitteeModal: React.FC<{
         </ModalBody>
       </ModalContent>
     </Modal>
-  );
-};
-
-// Update BillSummary component to make committees clickable
-const BillSummary: React.FC<{ bill: Bill }> = ({ bill }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const { isOpen: isCommitteeOpen, onOpen: onCommitteeOpen, onClose: onCommitteeClose } = useDisclosure();
-  const [selectedCommittee, setSelectedCommittee] = useState<Committee | null>(null);
-
-  const handleCommitteeClick = (committeeName: string) => {
-    // In a real implementation, this would fetch committee data from the API
-    // For now, we'll use the mock data
-    setSelectedCommittee(mockCommittee);
-    onCommitteeOpen();
-  };
-
-  return (
-    <>
-      <VStack spacing={6} align="stretch">
-        {/* Top Panel - Bill Summary */}
-        <HStack spacing={6} align="stretch">
-          <Box flex="1">
-            <Card>
-              <CardHeader>
-                <Heading size="md">{bill.title}</Heading>
-              </CardHeader>
-              <CardBody>
-                <Text fontSize="md" lineHeight="tall">
-                  {bill.summary}
-                </Text>
-                <Text mt={4}><strong>Status:</strong> {bill.status}</Text>
-                <Text><strong>Sponsors:</strong> {bill.sponsors.join(', ')}</Text>
-                <Text>
-                  <strong>Committees:</strong>{' '}
-                  {bill.committees.map((committee, index) => (
-                    <React.Fragment key={committee}>
-                      {index > 0 && ', '}
-                      <Box
-                        as="span"
-                        color="blue.500"
-                        cursor="pointer"
-                        _hover={{ textDecoration: 'underline' }}
-                        onClick={() => handleCommitteeClick(committee)}
-                      >
-                        {committee}
-                      </Box>
-                    </React.Fragment>
-                  ))}
-                </Text>
-                <Button mt={4} onClick={onOpen}>View Full Details</Button>
-              </CardBody>
-            </Card>
-          </Box>
-        </HStack>
-
-        {/* Bottom Panel - Key Takeaways */}
-        <Card>
-          <CardHeader>
-            <Heading size="md">Key Takeaways</Heading>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={4} align="stretch">
-              <Text fontSize="md">
-                • This bill focuses on promoting renewable energy adoption across the United States
-              </Text>
-              <Text fontSize="md">
-                • It includes provisions for tax incentives for clean energy projects
-              </Text>
-              <Text fontSize="md">
-                • The bill establishes new energy efficiency standards for federal buildings
-              </Text>
-              <Text fontSize="md">
-                • It creates a new grant program for renewable energy research and development
-              </Text>
-            </VStack>
-          </CardBody>
-        </Card>
-      </VStack>
-
-      {/* Committee Modal */}
-      {selectedCommittee && (
-        <CommitteeModal
-          isOpen={isCommitteeOpen}
-          onClose={onCommitteeClose}
-          committee={selectedCommittee}
-        />
-      )}
-
-      <Modal isOpen={isOpen} onClose={onClose} size="xl">
-        <ModalOverlay />
-        <ModalContent maxW="85vw" maxH="85vh" margin="auto">
-          <ModalHeader>
-            <Flex justify="space-between" align="center">
-              <Heading size="md">{bill.title}</Heading>
-              <Select
-                placeholder="Select version"
-                size="sm"
-                width="200px"
-                defaultValue={bill.textVersions[0]?.type}
-              >
-                {bill.textVersions.map((version) => (
-                  <option key={version.date} value={version.type}>
-                    {version.type} - {new Date(version.date).toLocaleDateString()}
-                  </option>
-                ))}
-              </Select>
-            </Flex>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Grid templateColumns="1fr 2px 1fr" gap={6} h="calc(85vh - 200px)">
-              {/* Left Panel - Bill Details */}
-              <Box overflowY="auto" pr={4}>
-                <VStack spacing={6} align="stretch">
-                  <Box>
-                    <Heading size="sm" mb={2}>Summary</Heading>
-                    <Text>{bill.summary}</Text>
-                  </Box>
-                  <Box>
-                    <Heading size="sm" mb={2}>Status</Heading>
-                    <Text>{bill.status}</Text>
-                  </Box>
-                  <Box>
-                    <Heading size="sm" mb={2}>Sponsors</Heading>
-                    <Text>{bill.sponsors.join(', ')}</Text>
-                  </Box>
-                  <Box>
-                    <Heading size="sm" mb={2}>Committees</Heading>
-                    <Text>{bill.committees.join(', ')}</Text>
-                  </Box>
-                  <Box>
-                    <Heading size="sm" mb={2}>Timeline</Heading>
-                    <Timeline bill={bill} />
-                  </Box>
-                </VStack>
-              </Box>
-
-              {/* Divider */}
-              <Box 
-                position="relative" 
-                cursor="col-resize" 
-                _hover={{ bg: "gray.100" }}
-                onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-                  const startX = e.clientX;
-                  const parentElement = e.currentTarget?.parentElement as HTMLDivElement | null;
-                  const leftPanel = parentElement?.firstElementChild as HTMLDivElement | null;
-                  const startWidth = leftPanel?.offsetWidth || 0;
-                  
-                  const handleMouseMove = (e: MouseEvent) => {
-                    const delta = e.clientX - startX;
-                    const newWidth = Math.min(Math.max(startWidth + delta, 300), 600);
-                    if (leftPanel) {
-                      leftPanel.style.width = `${newWidth}px`;
-                    }
-                  };
-                  
-                  const handleMouseUp = () => {
-                    document.removeEventListener('mousemove', handleMouseMove);
-                    document.removeEventListener('mouseup', handleMouseUp);
-                  };
-                  
-                  document.addEventListener('mousemove', handleMouseMove);
-                  document.addEventListener('mouseup', handleMouseUp);
-                }}
-              >
-                <Divider orientation="vertical" borderColor="gray.200" />
-              </Box>
-
-              {/* Right Panel - Bill Text */}
-              <Box
-                overflowY="auto"
-                bg="gray.50"
-                borderRadius="md"
-                p={4}
-                fontFamily="monospace"
-                whiteSpace="pre-wrap"
-              >
-                {bill.textVersions[0]?.text || "Full bill text not available"}
-              </Box>
-            </Grid>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </>
   );
 };
 
@@ -1481,31 +1300,51 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'bills' | 'members' | 'committees'>('bills');
   const [searchResults, setSearchResults] = useState<{
-    bills: Bill[];
-    members: Member[];
-    committees: Committee[];
+    bills: any[];
+    members: any[];
+    committees: any[];
   }>({ bills: [], members: [], committees: [] });
   const { isOpen: isCommitteeOpen, onOpen: onCommitteeOpen, onClose: onCommitteeClose } = useDisclosure();
   const [selectedCommittee, setSelectedCommittee] = useState<Committee | null>(null);
+  // Bill modal state
+  const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
+  const { isOpen: isBillOpen, onOpen: onBillOpen, onClose: onBillClose } = useDisclosure();
 
   const handleSearch = useCallback(async (query: string) => {
     setIsLoading(true);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Mock search results
-    setSearchResults({
-      bills: [mockBill],
-      members: [mockMember],
-      committees: [mockCommittee]
-    });
-    
+    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
+    const q = query.trim().toLowerCase();
+    // Bills: match in title or summary
+    const bills = staticDataService.getBills().filter(
+      (bill: any) =>
+        (bill.title && bill.title.toLowerCase().includes(q)) ||
+        (bill.summary && bill.summary.toLowerCase().includes(q))
+    );
+    // Members: match in firstName, lastName, or fullName
+    const members = staticDataService.getMembers().filter(
+      (member: any) =>
+        (member.firstName && member.firstName.toLowerCase().includes(q)) ||
+        (member.lastName && member.lastName.toLowerCase().includes(q)) ||
+        (member.fullName && member.fullName.toLowerCase().includes(q))
+    );
+    // Committees: match in name
+    const committees = staticDataService.getCommittees().filter(
+      (committee: any) =>
+        (committee.name && committee.name.toLowerCase().includes(q))
+    );
+    setSearchResults({ bills, members, committees });
     setIsLoading(false);
   }, []);
 
   const handleCommitteeClick = (committee: Committee) => {
     setSelectedCommittee(committee);
     onCommitteeOpen();
+  };
+
+  const handleBillClick = (bill: any) => {
+    // Construct billId as in BillList: `${bill.congress}-${bill.billType.toLowerCase()}-${bill.billNumber}`
+    setSelectedBillId(`${bill.congress}-${bill.billType.toLowerCase()}-${bill.billNumber}`);
+    onBillOpen();
   };
 
   const debouncedSearch = useMemo(
@@ -1554,7 +1393,7 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                 ) : (
                   <Stack spacing={4}>
                     {searchResults.bills.map((bill) => (
-                      <Card key={bill.id} variant="outline" cursor="pointer" _hover={{ bg: 'gray.50' }}>
+                      <Card key={`${bill.congress}-${bill.billType}-${bill.billNumber}`} variant="outline" cursor="pointer" _hover={{ bg: 'gray.50' }} onClick={() => handleBillClick(bill)}>
                         <CardBody>
                           <Heading size="sm">{bill.title}</Heading>
                           <Text fontSize="sm" color="gray.600" noOfLines={2}>
@@ -1581,7 +1420,7 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                     {searchResults.members.map((member) => (
                       <Card key={member.id} variant="outline" cursor="pointer" _hover={{ bg: 'gray.50' }}>
                         <CardBody>
-                          <Flex gap={4}>
+                          <Flex gap={4} align="center">
                             <Box
                               as="img"
                               src={member.photoUrl}
@@ -1591,7 +1430,7 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                               borderRadius="full"
                             />
                             <Box>
-                              <Heading size="sm">{member.fullName}</Heading>
+                              <Heading size="sm">{member.firstName} {member.lastName}</Heading>
                               <Text fontSize="sm" color="gray.600">
                                 {member.state}{member.district ? `-${member.district}` : ''}
                               </Text>
@@ -1632,6 +1471,18 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
           </Tabs>
         </ModalBody>
       </ModalContent>
+
+      {/* Bill Summary Modal */}
+      {selectedBillId && (
+        <BillSummary
+          billId={selectedBillId}
+          isOpen={isBillOpen}
+          onClose={() => {
+            setSelectedBillId(null);
+            onBillClose();
+          }}
+        />
+      )}
 
       {/* Committee Modal */}
       {selectedCommittee && (
@@ -1722,9 +1573,9 @@ const App: React.FC = () => {
                     <Box bg="white" p={4} rounded="md" shadow="sm">
                       <Timeline bill={selectedBill} />
                     </Box>
-                    <Box bg="white" p={4} rounded="md" shadow="sm">
+                    {/* <Box bg="white" p={4} rounded="md" shadow="sm">
                       <BillSummary bill={selectedBill} />
-                    </Box>
+                    </Box> */}
                   </VStack>
                 </AccordionPanel>
               </AccordionItem>
@@ -1766,9 +1617,9 @@ const App: React.FC = () => {
                 <Box p={4} bg="gray.50" rounded="md">
                   <Timeline bill={selectedBill} />
                 </Box>
-                <Box p={4} bg="gray.50" rounded="md">
+                {/* <Box p={4} bg="gray.50" rounded="md">
                   <BillSummary bill={selectedBill} />
-                </Box>
+                </Box> */}
               </VStack>
 
               {/* Divider */}
