@@ -1,0 +1,36 @@
+Build a web application that helps users explore and understand U.S. Congressional activity. The app should:
+
+Core Experience:
+1. Present a clean, single-screen interface divided into:
+   - Bill tracking (timeline, status, details)
+   - Geographic representation (interactive map showing votes and representatives)
+   - Daily activity highlights
+   - Quick access to saved items
+
+2. Enable users to:
+   - Track bills through their legislative journey
+   - Find and learn about their representatives
+   - Understand voting patterns
+   - Save items for later reference
+
+Visual Design:
+- Modern, professional aesthetic
+- Clear information hierarchy
+- Responsive design that adapts gracefully to all devices
+- Intuitive navigation and interaction patterns
+
+Key Features:
+- Interactive timeline showing a bill's progress
+- US map visualization with:
+  - Vote distribution patterns
+  - Representative selection
+  - State/district highlighting
+- Rich member profiles including:
+  - Voting history
+  - Committee assignments
+  - Contact information
+- Comprehensive search across bills, members, and committees
+- Daily highlights of significant legislative activity
+- Quick access to saved/pinned items
+
+The interface should be immediately useful with sample data, with architecture ready for real API integration later.

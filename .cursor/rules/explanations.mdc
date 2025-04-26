@@ -1,0 +1,21 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+[original-app.tsx](mdc:src/original-app.tsx)
+[prompt.md](mdc:prompt.md)
+[natural-prompt](mdc:natural-prompt)
+[working-explanation.md](mdc:working-explanation.md)
+
+- At all times we should consider how we've changed [original-app.tsx](mdc:src/original-app.tsx) to the completed app that fulfills [prompt.md](mdc:prompt.md)
+    - When I type "NEW DRAFT", update [working-explanation.md](mdc:working-explanation.md)
+    - Answer the following question: What specific edits did you make to improve the response and ensure it is ideal?
+    - Try to be concise and focus on the key points    - Log each entry "#001, #003, etc"
+    - Don't delete previous entries
+    - Update [natural-prompt](mdc:natural-prompt) to adapt [prompt.md](mdc:prompt.md) for a smarter LLM that wouldn't need as much spelled out (i.e. I wouldn't have to say what framework to use or be so specific) when I type "NATURAL PROMPT"
+
+COMMANDS
+    = NEW DRAFT
+    = NATURAL PROMPT
+    

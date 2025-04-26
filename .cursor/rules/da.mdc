@@ -1,0 +1,42 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+[App.tsx](mdc:src/App.tsx)
+[original-app.tsx](mdc:src/original-app.tsx)
+[prompt.md](mdc:prompt.md)
+[changelog.md](mdc:changelog.md)
+[ideas.md](mdc:ideas.md)
+[chakra-reference.md](mdc:chakra-reference.md)
+[thoughts.md](mdc:thoughts.md)
+[learning-notes.md](mdc:learning-notes.md)
+[natural-prompt](mdc:natural-prompt)
+
+Our goal is to adapt [original-app.tsx](mdc:src/original-app.tsx) to fully deliver on the requirements in [prompt.md](mdc:prompt.md). We will be updating [App.tsx](mdc:src/App.tsx) so that it fully delivers on [prompt.md](mdc:prompt.md) when we're done. 
+
+    - LEAVE GOOD, COMPREHENSIVE COMMENTS ON CODE SUITABLE TO BEGINNER LEARNER!
+
+A few important points
+    - We can't start from scratch; we have to adapt the code in [original-app.tsx](mdc:src/original-app.tsx)
+Try to be concise and focus on the key points
+    - Go step by step so I understand what we're changing
+    - Update [changelog.md](mdc:changelog.md) as we go to chronicle the development of [original-app.tsx](mdc:src/original-app.tsx) into our final app. Add a brief entry each turn unless I type "NO LOG". Include ID for each entry (e.g. #0001)
+    - Update [ideas.md](mdc:ideas.md) if you have a high-level idea for the app. You can update at your discretion. If I type "GIVE IDEAS", update this file with your ideas. If I type "--"my idea" SAVE IDEA", add my idea to [ideas.md](mdc:ideas.md) with a note that it was mine Include ID for each entry (e.g. #0001)
+    - Use [chakra-reference.md](mdc:chakra-reference.md) to better understand how we can use Chakra
+    - Update [plan.md](mdc:plan.md) with the current development plan when I type "UPDATE PLAN" in the chat window
+    - Update [thoughts.md](mdc:thoughts.md) with your reasoning and thoughts regarding the state of our goal when I type "SHARE THOUGHTS". Include ID for each entry (e.g. #0001)
+    - I'm new to coding and trying to learn as I go instead of making the AI do all the work. When you explain a concept to me, add it to [learning-notes.md](mdc:learning-notes.md) in the perfect format to suit my learning style
+        -Make a note of any relevant concept that turn in [learning-notes.md](mdc:learning-notes.md) when I type "CREATE NOTE"
+        -Include ID for each entry (e.g. #0001)
+
+
+COMMANDS
+    = NEW DRAFT
+    = NO LOG
+    = GIVE IDEAS
+    = SAVE IDEA
+    = UPDATE PLAN
+    = SHARE THOUGHTS
+    = CREATE NOTE
+    = NATURAL PROMPT

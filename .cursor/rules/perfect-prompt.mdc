@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+When our conversation is getting long and you start to have to much context, I'll need to start a new chat. Write the perfect prompt to get my new chat started so you'll know exactly where to start off. Use "@context" to tag documents in the codebase you may need to refer to. Write the prompt when I type "PERFECT PROMPT"
