@@ -150,4 +150,24 @@ export interface BillSearchParams {
   dateTo?: string;
   page?: number;
   pageSize?: number;
+}
+
+export function convertApiBill(apiBill: any): Bill {
+  return {
+    congress: apiBill.congress,
+    billType: apiBill.billType,
+    billNumber: apiBill.billNumber,
+    title: apiBill.title,
+    displayTitle: apiBill.displayTitle || apiBill.title,
+    summary: apiBill.summary,
+    introducedDate: apiBill.introducedDate,
+    policyArea: apiBill.policyArea || { name: '' },
+    sponsor: apiBill.sponsor,
+    latestAction: apiBill.latestAction,
+    committees: apiBill.committees || { count: 0, items: [] },
+    textVersions: apiBill.textVersions || { count: 0, url: '' },
+    votes: apiBill.votes || {},
+    timeline: apiBill.timeline || { milestones: [] },
+    status: apiBill.status || { current: '', stage: '', isActive: false, lastUpdated: '' }
+  };
 } 

@@ -17,6 +17,8 @@ export interface Member {
   lastName: string;
   fullName: string;
   state: string;
+  stateCode?: string;
+  stateName?: string;
   district?: string;
   party: string;
   chamber: string;
@@ -28,6 +30,7 @@ export interface Member {
   depiction?: MemberDepiction;
   createdAt?: string;
   updatedAt?: string;
+  dateOfBirth?: string;
 }
 
 export interface StateMembers {
@@ -66,6 +69,7 @@ export function convertApiMember(apiMember: any): Member {
     votingRecord: apiMember.votingRecord,
     depiction: apiMember.depiction,
     createdAt: apiMember.createdAt,
-    updatedAt: apiMember.updatedAt
+    updatedAt: apiMember.updatedAt,
+    dateOfBirth: apiMember.dateOfBirth,
   };
 } 

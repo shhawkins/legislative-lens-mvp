@@ -23,16 +23,21 @@ import {
   Skeleton,
   Alert,
   AlertIcon,
+  IconButton,
 } from '@chakra-ui/react';
 import { staticDataService } from '../../services/staticDataService';
 import Timeline from './Timeline';
 import CommitteeModal from '../committee/CommitteeModal';
 import { Bill, Vote } from '../../types/bill';
+import { StarIcon } from '@chakra-ui/icons';
 
 interface BillSummaryProps {
   billId: string;
   isOpen: boolean;
   onClose: () => void;
+  onSelectMember?: (member: any) => void;
+  isPinned?: boolean;
+  onTogglePin?: () => void;
 }
 
 type CommitteeItem = NonNullable<Bill['committees']['items'][number]>;
@@ -46,6 +51,11 @@ const CommitteeDisplay: React.FC<{ committee: CommitteeItem }> = ({ committee })
   </Box>
 );
 
+function stripHtmlTags(html: string): string {
+  if (!html) return '';
+  return html.replace(/<[^>]+>/g, '');
+}
+
 /**
  * BillSummary component displays a comprehensive overview of a bill,
  * including its title, summary, status, sponsors, and committees.
@@ -55,9 +65,12 @@ const CommitteeDisplay: React.FC<{ committee: CommitteeItem }> = ({ committee })
  * @param {string} props.billId - The bill ID in format "congress-type-number" (e.g., "118-hr-1234")
  * @param {boolean} props.isOpen - Whether the modal is open
  * @param {() => void} props.onClose - Callback to close the modal
+ * @param {() => void} props.onSelectMember - Callback to select a member
+ * @param {boolean} props.isPinned - Whether the bill is pinned
+ * @param {() => void} props.onTogglePin - Callback to toggle the pinned state
  * @returns {JSX.Element} Bill summary component
  */
-const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose }) => {
+const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose, onSelectMember, isPinned, onTogglePin }) => {
   const [bill, setBill] = useState<Bill | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,8 +179,22 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose }) =>
       return null;
     }
     return (
-      <VStack align="start" spacing={2}>
-        <Heading size="lg">{bill.title}</Heading>
+      <VStack align="start" spacing={2} position="relative" w="100%">
+        <Flex align="center" w="100%">
+          <Heading size="lg" flex="1">{bill.title}</Heading>
+          {typeof isPinned !== 'undefined' && onTogglePin && (
+            <IconButton
+              icon={<StarIcon />}
+              aria-label={isPinned ? 'Unpin Bill' : 'Pin Bill'}
+              colorScheme={isPinned ? 'yellow' : 'gray'}
+              variant={isPinned ? 'solid' : 'ghost'}
+              size="sm"
+              ml={4}
+              mt={1}
+              onClick={onTogglePin}
+            />
+          )}
+        </Flex>
         <HStack spacing={2}>
           <Badge colorScheme="blue">{bill.billType} {bill.billNumber}</Badge>
           <Badge colorScheme={bill.status.isActive ? 'green' : 'gray'}>
@@ -203,12 +230,35 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose }) =>
       <VStack spacing={6} align="stretch">
         <Box>
           <Text fontSize="sm" color="gray.500">Summary</Text>
-          <Text mt={1}>{bill.summary || 'No summary available'}</Text>
+          <Text mt={1}>{stripHtmlTags(bill.summary || '') || 'No summary available'}</Text>
         </Box>
         
         <Box>
           <Text fontSize="sm" color="gray.500">Sponsor</Text>
-          <Text mt={1}>{bill.sponsor.fullName}</Text>
+          {bill.sponsor ? (
+            <Text mt={1}>
+              {onSelectMember ? (
+                <Box
+                  as="button"
+                  color="blue.600"
+                  fontWeight="semibold"
+                  cursor="pointer"
+                  _hover={{ textDecoration: 'underline' }}
+                  onClick={() => { onSelectMember(bill.sponsor); onClose(); }}
+                  display="inline"
+                  background="none"
+                  border="none"
+                  p={0}
+                >
+                  {bill.sponsor.fullName}
+                </Box>
+              ) : (
+                bill.sponsor.fullName
+              )}
+            </Text>
+          ) : (
+            <Text mt={1}>Not available</Text>
+          )}
           <Text fontSize="sm" color="gray.600">
             {bill.sponsor.party === 'D' ? 'Democrat' : 'Republican'} - {bill.sponsor.state}
           </Text>
@@ -283,7 +333,7 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose }) =>
               </CardHeader>
               <CardBody>
                 <Text fontSize="md" lineHeight="tall">
-                  {bill?.summary || 'No summary available'}
+                  {stripHtmlTags(bill?.summary || '') || 'No summary available'}
                 </Text>
                 <Text mt={4}><strong>Status:</strong> {bill?.latestAction?.text || 'No status available'}</Text>
                 <Text>

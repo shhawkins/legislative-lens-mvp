@@ -24,12 +24,13 @@ import {
   Tooltip,
   useColorModeValue,
   Spinner,
+  Button,
+  useDisclosure,
 } from '@chakra-ui/react';
-import { ExternalLinkIcon } from '@chakra-ui/icons';
+import { ExternalLinkIcon, InfoIcon } from '@chakra-ui/icons';
 import { Member, convertApiMember } from '../../types/member';
 import { Party } from '../../types/common';
-import { ApiService } from '../../services/api/ApiService';
-import { Member as ApiMember } from '../../services/api/types';
+import { staticDataService } from '../../services/staticDataService';
 
 const mockMembers: Member[] = [
   {
@@ -140,47 +141,70 @@ interface StateMembersModalProps {
   onClose: () => void;
   stateCode: string;
   stateName: string;
+  onSelectMember?: (member: Member) => void;
 }
 
-const MemberCard: React.FC<{ member: Member; showDistrict?: boolean }> = ({ member, showDistrict = false }) => {
+const MemberCard: React.FC<{ member: Member; showDistrict?: boolean; onViewProfile?: () => void; onSelect?: (member: Member) => void }> = ({ 
+  member, 
+  showDistrict = false,
+  onViewProfile,
+  onSelect
+}) => {
   const cardBg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
   const partyColor = member.party === 'D' ? 'blue.500' : member.party === 'R' ? 'red.500' : 'purple.500';
+  const age = member.dateOfBirth ? new Date().getFullYear() - parseInt(member.dateOfBirth.slice(0, 4)) : undefined;
 
   return (
     <Card 
       bg={cardBg} 
       border="1px" 
       borderColor={borderColor}
-      _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
+      _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg', cursor: onSelect ? 'pointer' : 'default' }}
       transition="all 0.2s"
+      onClick={onSelect ? () => onSelect(member) : undefined}
     >
       <CardBody>
-        <Flex direction="column" gap={3}>
-          <Flex justify="space-between" align="center">
+        <Flex direction="column" gap={3} position="relative">
+          <Flex justify="space-between" align="center" position="relative">
             <VStack align="start" spacing={0}>
               <Heading size="md">
                 {member.firstName} {member.lastName}
               </Heading>
+              {age && (
+                <Text fontSize="sm" color="gray.600">Age: {age}</Text>
+              )}
               <Text fontSize="sm" color="gray.500">
                 {member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent'}
               </Text>
+              {showDistrict && member.district && (
+                <Text fontSize="sm" color="gray.600">
+                  District {member.district}
+                </Text>
+              )}
             </VStack>
-            <Badge 
-              colorScheme={member.party === 'D' ? 'blue' : member.party === 'R' ? 'red' : 'purple'}
-              fontSize="md"
-              px={3}
-              py={1}
-            >
-              {member.party}
-            </Badge>
+            <Flex align="center" gap={2}>
+              <Badge 
+                colorScheme={member.party === 'D' ? 'blue' : member.party === 'R' ? 'red' : 'purple'}
+                fontSize="md"
+                px={3}
+                py={1}
+              >
+                {member.party}
+              </Badge>
+              {/* IconButton for expanding profile */}
+              {onViewProfile && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="blue"
+                  onClick={e => { e.stopPropagation(); onViewProfile(); }}
+                  aria-label="View Full Profile"
+                  leftIcon={<InfoIcon />}
+                />
+              )}
+            </Flex>
           </Flex>
-
-          {showDistrict && member.district && (
-            <Text fontSize="sm" color="gray.600">
-              District {member.district}
-            </Text>
-          )}
 
           <Flex gap={2} wrap="wrap">
             {member.committees?.map(committee => (
@@ -192,17 +216,37 @@ const MemberCard: React.FC<{ member: Member; showDistrict?: boolean }> = ({ memb
             ))}
           </Flex>
 
-          <Flex justify="space-between" align="center" mt="auto">
-            <Text fontSize="sm" color="gray.500">
-              {member.chamber === 'senate' ? 'Senator' : 'Representative'} from {member.state}
-            </Text>
-            <Link 
-              href={`https://www.congress.gov/member/${member.firstName.toLowerCase()}-${member.lastName.toLowerCase()}/${member.bioguideId}`}
-              isExternal
-              color={partyColor}
-            >
-              View Profile <ExternalLinkIcon mx="2px" />
+          {member.contactInfo && (
+            <Box>
+              <Text fontSize="sm" fontWeight="medium">Contact:</Text>
+              <Text fontSize="sm">{member.contactInfo}</Text>
+            </Box>
+          )}
+
+          {member.reelectionDate && (
+            <Box>
+              <Text fontSize="sm" fontWeight="medium">Next Election:</Text>
+              <Text fontSize="sm">{new Date(member.reelectionDate).toLocaleDateString()}</Text>
+            </Box>
+          )}
+
+          <Flex justify="space-between" align="center">
+            <Link href={`https://www.congress.gov/member/${member.bioguideId}`} isExternal>
+              <Button size="sm" variant="ghost" colorScheme="blue" leftIcon={<ExternalLinkIcon />}>
+                View on Congress.gov
+              </Button>
             </Link>
+            {member.depiction?.imageUrl && (
+              <Box
+                as="img"
+                src={member.depiction.imageUrl}
+                alt={`${member.firstName} ${member.lastName}`}
+                w="60px"
+                h="60px"
+                borderRadius="full"
+                objectFit="cover"
+              />
+            )}
           </Flex>
         </Flex>
       </CardBody>
@@ -210,51 +254,48 @@ const MemberCard: React.FC<{ member: Member; showDistrict?: boolean }> = ({ memb
   );
 };
 
-const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, stateCode, stateName }) => {
+const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, stateCode, stateName, onSelectMember }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [senators, setSenators] = useState<Member[]>([]);
   const [representatives, setRepresentatives] = useState<Member[]>([]);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const { isOpen: isMemberModalOpen, onOpen: onMemberModalOpen, onClose: onMemberModalClose } = useDisclosure();
 
   useEffect(() => {
     const fetchMembers = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        // Fetch members from API
-        const apiService = ApiService.getInstance();
-        const [senatorsResponse, repsResponse] = await Promise.all([
-          apiService.getMembers(118, 'senate'),
-          apiService.getMembers(118, 'house')
-        ]);
-
-        // Filter by state and convert API members to our Member type
-        setSenators(
-          (senatorsResponse.members?.filter((m: ApiMember) => m.state === stateCode) || [])
-            .map(convertApiMember)
-        );
-        setRepresentatives(
-          (repsResponse.members?.filter((m: ApiMember) => m.state === stateCode) || [])
-            .map(convertApiMember)
-        );
+        const allMembers = staticDataService.getMembersByState(stateCode);
+        setSenators(allMembers.filter(m => m.chamber === 'senate'));
+        setRepresentatives(allMembers.filter(m => m.chamber === 'house'));
       } catch (err) {
-        setError('Failed to fetch members. Please try again later.');
-        console.error('Error fetching members:', err);
+        setError('Failed to load members for this state.');
       } finally {
         setIsLoading(false);
       }
     };
-
     if (isOpen) {
       fetchMembers();
     }
   }, [isOpen, stateCode]);
 
+  const handleViewProfile = (member: Member) => {
+    setSelectedMember(member);
+    onMemberModalOpen();
+  };
+
+  const handleSelectMember = (member: Member) => {
+    if (onSelectMember) onSelectMember(member);
+    onClose();
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="6xl">
+    <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent maxW="75vw" margin="auto">
         <ModalHeader>
           <Heading size="lg">Congressional Delegation: {stateName}</Heading>
           <Text fontSize="md" color="gray.600" mt={2}>
@@ -285,10 +326,21 @@ const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, 
                     ) : (
                       <>
                         {senators.map(senator => (
-                          <MemberCard key={senator.id} member={senator} />
+                          <MemberCard 
+                            key={senator.id} 
+                            member={senator} 
+                            onViewProfile={() => handleViewProfile(senator)}
+                            onSelect={handleSelectMember}
+                          />
                         ))}
                         {representatives.map(rep => (
-                          <MemberCard key={rep.id} member={rep} showDistrict />
+                          <MemberCard 
+                            key={rep.id} 
+                            member={rep} 
+                            showDistrict 
+                            onViewProfile={() => handleViewProfile(rep)}
+                            onSelect={handleSelectMember}
+                          />
                         ))}
                       </>
                     )}
@@ -301,7 +353,12 @@ const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, 
                       <Text>No senators found for {stateName}</Text>
                     ) : (
                       senators.map(senator => (
-                        <MemberCard key={senator.id} member={senator} />
+                        <MemberCard 
+                          key={senator.id} 
+                          member={senator} 
+                          onViewProfile={() => handleViewProfile(senator)}
+                          onSelect={handleSelectMember}
+                        />
                       ))
                     )}
                   </Grid>
@@ -313,7 +370,13 @@ const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, 
                       <Text>No representatives found for {stateName}</Text>
                     ) : (
                       representatives.map(rep => (
-                        <MemberCard key={rep.id} member={rep} showDistrict />
+                        <MemberCard 
+                          key={rep.id} 
+                          member={rep} 
+                          showDistrict 
+                          onViewProfile={() => handleViewProfile(rep)}
+                          onSelect={handleSelectMember}
+                        />
                       ))
                     )}
                   </Grid>
@@ -323,6 +386,120 @@ const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, 
           )}
         </ModalBody>
       </ModalContent>
+
+      {/* Member Profile Modal */}
+      {selectedMember && (
+        <Modal isOpen={isMemberModalOpen} onClose={onMemberModalClose} size="xl">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>
+              <Heading size="lg">{selectedMember.fullName || `${selectedMember.firstName} ${selectedMember.lastName}`}</Heading>
+              <Text fontSize="sm" color="gray.500" mt={1}>
+                {selectedMember.state}{selectedMember.district ? `-${selectedMember.district}` : ''} • {selectedMember.party === 'D' ? 'Democrat' : selectedMember.party === 'R' ? 'Republican' : 'Independent'}
+              </Text>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody pb={6}>
+              <Grid templateColumns={{ base: '1fr', md: '1fr 2fr' }} gap={6}>
+                {/* Left Column - Member Info */}
+                <Box>
+                  <Box
+                    as="img"
+                    src={selectedMember.depiction?.imageUrl || selectedMember.photoUrl}
+                    alt={`${selectedMember.firstName} ${selectedMember.lastName}`}
+                    w="100%"
+                    maxW="300px"
+                    borderRadius="lg"
+                    objectFit="cover"
+                    border="3px solid"
+                    borderColor={selectedMember.party === 'D' ? 'blue.500' : 'red.500'}
+                  />
+                  <Box mt={4}>
+                    <Heading size="sm" mb={2}>Contact Information</Heading>
+                    <Text fontSize="sm">{selectedMember.contactInfo || 'Not available'}</Text>
+                    {selectedMember.reelectionDate ? (
+                      <Text fontSize="sm" color="gray.500" mt={1}>
+                        Next Election: {new Date(selectedMember.reelectionDate).toLocaleDateString()}
+                      </Text>
+                    ) : (
+                      <Text color="gray.400">Next Election: Not available</Text>
+                    )}
+                  </Box>
+                </Box>
+                {/* Right Column - Detailed Info */}
+                <Box>
+                  <Tabs variant="soft-rounded" colorScheme="blue">
+                    <TabList mb={4}>
+                      <Tab>Committees</Tab>
+                      <Tab>Voting Record</Tab>
+                      <Tab>Biography</Tab>
+                    </TabList>
+                    <TabPanels>
+                      {/* Committees Panel */}
+                      <TabPanel>
+                        <VStack spacing={4} align="stretch">
+                          {selectedMember.committees && selectedMember.committees.length > 0 ? (
+                            selectedMember.committees.map((committee, index) => (
+                              <Card key={index} variant="outline">
+                                <CardBody>
+                                  <Text fontSize="md" fontWeight="medium">{committee}</Text>
+                                </CardBody>
+                              </Card>
+                            ))
+                          ) : (
+                            <Text color="gray.400">Not available</Text>
+                          )}
+                        </VStack>
+                      </TabPanel>
+                      {/* Voting Record Panel */}
+                      <TabPanel>
+                        <VStack spacing={4} align="stretch">
+                          {selectedMember.votingRecord && selectedMember.votingRecord.length > 0 ? (
+                            selectedMember.votingRecord.map((record, index) => (
+                              <Card key={index} variant="outline">
+                                <CardBody>
+                                  <Flex justify="space-between" align="center">
+                                    <Box>
+                                      <Text fontSize="md" fontWeight="medium">Bill {record.billId}</Text>
+                                      <Text fontSize="sm" color="gray.500">Vote: {record.vote.toUpperCase()}</Text>
+                                    </Box>
+                                    <Badge
+                                      colorScheme={record.vote === 'yes' ? 'green' : 'red'}
+                                      fontSize="sm"
+                                    >
+                                      {record.vote.toUpperCase()}
+                                    </Badge>
+                                  </Flex>
+                                </CardBody>
+                              </Card>
+                            ))
+                          ) : (
+                            <Text color="gray.400">Not available</Text>
+                          )}
+                        </VStack>
+                      </TabPanel>
+                      {/* Biography Panel */}
+                      <TabPanel>
+                        <Box>
+                          {selectedMember.depiction?.attribution && (
+                            <Text fontSize="sm" color="gray.500" mb={2}>
+                              Photo: {selectedMember.depiction.attribution}
+                            </Text>
+                          )}
+                          <Text fontSize="md">
+                            {selectedMember.fullName} represents {selectedMember.state}{selectedMember.district ? `'s ${selectedMember.district}th district` : ''} in the {selectedMember.district ? 'House of Representatives' : 'Senate'}. 
+                            As a {selectedMember.party === 'D' ? 'Democrat' : selectedMember.party === 'R' ? 'Republican' : 'Independent'}, they serve on the following committees: {selectedMember.committees && selectedMember.committees.length > 0 ? selectedMember.committees.join(', ') : 'Not available'}.
+                          </Text>
+                        </Box>
+                      </TabPanel>
+                    </TabPanels>
+                  </Tabs>
+                </Box>
+              </Grid>
+            </ModalBody>
+          </ModalContent>
+        </Modal>
+      )}
     </Modal>
   );
 };

@@ -239,6 +239,11 @@ const mockCommittees = [
  * Transforms raw member data into the expected Member interface format
  */
 function transformMember(rawMember: RawMember): Member {
+  // Find the most recent term (highest congress number)
+  let mostRecentTerm = undefined;
+  if (Array.isArray(rawMember.terms) && rawMember.terms.length > 0) {
+    mostRecentTerm = rawMember.terms.reduce((a, b) => (a.congress > b.congress ? a : b));
+  }
   return {
     id: rawMember.bioguideId,
     bioguideId: rawMember.bioguideId,
@@ -246,6 +251,8 @@ function transformMember(rawMember: RawMember): Member {
     lastName: rawMember.lastName,
     fullName: rawMember.directOrderName,
     state: rawMember.state,
+    stateCode: mostRecentTerm?.stateCode,
+    stateName: mostRecentTerm?.stateName,
     district: rawMember.district?.toString(),
     party: rawMember.party,
     chamber: rawMember.chamber.toLowerCase().includes('house') ? 'house' : 'senate',
@@ -385,7 +392,10 @@ export const staticDataService = {
    */
   getMembersByState(state: string): Member[] {
     return (members as unknown as RawMember[])
-      .filter(member => member.state === state)
+      .filter(member =>
+        member.state === state ||
+        (Array.isArray(member.terms) && member.terms.some(term => term.stateCode === state || term.stateName === state))
+      )
       .map(transformMember);
   },
 

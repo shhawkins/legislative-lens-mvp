@@ -53,7 +53,7 @@ import {
   ListItem,
 } from '@chakra-ui/react';
 import { debounce } from 'lodash';
-import { ViewIcon, AddIcon, SearchIcon, HamburgerIcon, InfoIcon, SettingsIcon, QuestionIcon, ExternalLinkIcon } from '@chakra-ui/icons';
+import { ViewIcon, AddIcon, SearchIcon, HamburgerIcon, InfoIcon, SettingsIcon, QuestionIcon, ExternalLinkIcon, RepeatIcon } from '@chakra-ui/icons';
 import {
   ComposableMap,
   Geographies,
@@ -69,11 +69,12 @@ import { Bill, Vote } from './types/bill';
 import { Member } from './types/member';
 import { Committee } from './types/committee';
 import theme from './theme';
-import ApiTest from './components/test/ApiTest';
 import BillList from './components/bill/BillList';
 import { staticDataService } from './services/staticDataService';
 import BillSummary from './components/bill/BillSummary';
 import { AppContext } from './context/AppContext';
+import { convertApiBill } from './types/bill';
+import BillCard from './components/bill/BillCard';
 
 // Mock data
 const mockBill: Bill = {
@@ -747,13 +748,14 @@ const useMemberPhoto = (bioguideId: string) => {
 
 // Update the MemberCard component to use the new photo handling
 const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
-  const { photoUrl, error, isLoading } = useMemberPhoto(member.bioguideId);
+  // Prefer depiction.imageUrl, then fallback to getMemberPhotoUrl
+  const fallbackPhotoUrl = getMemberPhotoUrl(member.bioguideId);
+  const photoUrl = member.depiction?.imageUrl || member.photoUrl || fallbackPhotoUrl;
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isCommitteeOpen, onOpen: onCommitteeOpen, onClose: onCommitteeClose } = useDisclosure();
   const [selectedCommittee, setSelectedCommittee] = useState<Committee | null>(null);
 
   const handleCommitteeClick = (committeeName: string) => {
-    // In a real implementation, this would fetch committee data from the API
     setSelectedCommittee(mockCommittee);
     onCommitteeOpen();
   };
@@ -764,7 +766,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
         <Flex direction={{ base: 'column', md: 'row' }} gap={4}>
           <Box
             as="img"
-            src={isLoading ? '/default-member-photo.jpg' : photoUrl}
+            src={photoUrl}
             alt={`${member.firstName} ${member.lastName}`}
             w={{ base: '120px', md: '150px' }}
             h={{ base: '120px', md: '150px' }}
@@ -774,7 +776,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
             borderColor={member.party === 'D' ? 'blue.500' : 'red.500'}
           />
           <Box>
-            <Heading size="lg">{member.fullName}</Heading>
+            <Heading size="lg">{member.fullName || `${member.firstName} ${member.lastName}`}</Heading>
             <Text fontSize="lg" color="gray.600">
               {member.state}{member.district ? `-${member.district}` : ''}
             </Text>
@@ -783,65 +785,70 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
               color={member.party === 'D' ? 'blue.500' : 'red.500'}
               fontWeight="bold"
             >
-              {member.party === 'D' ? 'Democrat' : 'Republican'}
+              {member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent'}
             </Text>
           </Box>
         </Flex>
       </CardHeader>
-      
       <CardBody>
         <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={6}>
           {/* Left Column */}
           <Box>
             <Heading size="sm" mb={3}>Committee Assignments</Heading>
             <Flex direction="column" gap={2}>
-              {member.committees.map((committee, index) => (
-                <Box
-                  key={index}
-                  onClick={() => handleCommitteeClick(committee)}
-                  cursor="pointer"
-                  color="blue.500"
-                  _hover={{ textDecoration: 'underline' }}
-                >
-                  • {committee}
-                </Box>
-              ))}
+              {member.committees && member.committees.length > 0 ? (
+                member.committees.map((committee, index) => (
+                  <Box
+                    key={index}
+                    onClick={() => handleCommitteeClick(committee)}
+                    cursor="pointer"
+                    color="blue.500"
+                    _hover={{ textDecoration: 'underline' }}
+                  >
+                    • {committee}
+                  </Box>
+                ))
+              ) : (
+                <Text color="gray.400">Not available</Text>
+              )}
             </Flex>
-            
             <Heading size="sm" mt={6} mb={3}>Contact Information</Heading>
-            <Text fontSize="sm">{member.contactInfo}</Text>
+            <Text fontSize="sm">{member.contactInfo || <span style={{color:'#888'}}>Not available</span>}</Text>
           </Box>
-          
           {/* Right Column */}
           <Box>
             <Heading size="sm" mb={3}>Recent Voting Record</Heading>
             <Flex direction="column" gap={2}>
-              {member.votingRecord && member.votingRecord.map((record, index) => (
-                <Flex key={index} justify="space-between" align="center">
-                  <Text fontSize="sm" isTruncated>Bill {record.billId}</Text>
-                  <Box
-                    bg={record.vote === 'yes' ? 'green.100' : 'red.100'}
-                    color={record.vote === 'yes' ? 'green.700' : 'red.700'}
-                    px={2}
-                    py={1}
-                    borderRadius="md"
-                    fontSize="sm"
-                  >
-                    {record.vote.toUpperCase()}
-                  </Box>
-                </Flex>
-              ))}
+              {member.votingRecord && member.votingRecord.length > 0 ? (
+                member.votingRecord.map((record, index) => (
+                  <Flex key={index} justify="space-between" align="center">
+                    <Text fontSize="sm" isTruncated>Bill {record.billId}</Text>
+                    <Box
+                      bg={record.vote === 'yes' ? 'green.100' : 'red.100'}
+                      color={record.vote === 'yes' ? 'green.700' : 'red.700'}
+                      px={2}
+                      py={1}
+                      borderRadius="md"
+                      fontSize="sm"
+                    >
+                      {record.vote.toUpperCase()}
+                    </Box>
+                  </Flex>
+                ))
+              ) : (
+                <Text color="gray.400">Not available</Text>
+              )}
             </Flex>
-            
             <Box mt={6}>
               <Text fontSize="sm" color="gray.600">Next Election</Text>
-              {member.reelectionDate && (
+              {member.reelectionDate ? (
                 <Text fontSize="md" fontWeight="medium">{member.reelectionDate}</Text>
+              ) : (
+                <Text color="gray.400">Not available</Text>
               )}
             </Box>
           </Box>
         </Grid>
-        
         <Button
           mt={6}
           colorScheme="blue"
@@ -852,7 +859,6 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
           View Full Profile
         </Button>
       </CardBody>
-      
       {/* Committee Modal */}
       {selectedCommittee && (
         <CommitteeModal
@@ -861,15 +867,14 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
           committee={selectedCommittee}
         />
       )}
-
       {/* Member Profile Modal */}
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
-            <Heading size="lg">{member.fullName}</Heading>
+            <Heading size="lg">{member.fullName || `${member.firstName} ${member.lastName}`}</Heading>
             <Text fontSize="sm" color="gray.500" mt={1}>
-              {member.state}{member.district ? `-${member.district}` : ''} • {member.party === 'D' ? 'Democrat' : 'Republican'}
+              {member.state}{member.district ? `-${member.district}` : ''} • {member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent'}
             </Text>
           </ModalHeader>
           <ModalCloseButton />
@@ -879,7 +884,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
               <Box>
                 <Box
                   as="img"
-                  src={isLoading ? '/default-member-photo.jpg' : photoUrl}
+                  src={photoUrl}
                   alt={`${member.firstName} ${member.lastName}`}
                   w="100%"
                   maxW="300px"
@@ -890,15 +895,16 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
                 />
                 <Box mt={4}>
                   <Heading size="sm" mb={2}>Contact Information</Heading>
-                  <Text fontSize="sm">{member.contactInfo}</Text>
-                  {member.reelectionDate && (
+                  <Text fontSize="sm">{member.contactInfo || <span style={{color:'#888'}}>Not available</span>}</Text>
+                  {member.reelectionDate ? (
                     <Text fontSize="sm" color="gray.500" mt={1}>
                       Next Election: {new Date(member.reelectionDate).toLocaleDateString()}
                     </Text>
+                  ) : (
+                    <Text color="gray.400">Next Election: Not available</Text>
                   )}
                 </Box>
               </Box>
-
               {/* Right Column - Detailed Info */}
               <Box>
                 <Tabs variant="soft-rounded" colorScheme="blue">
@@ -907,55 +913,60 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
                     <Tab>Voting Record</Tab>
                     <Tab>Biography</Tab>
                   </TabList>
-
                   <TabPanels>
                     {/* Committees Panel */}
                     <TabPanel>
                       <VStack spacing={4} align="stretch">
-                        {member.committees.map((committee, index) => (
-                          <Card key={index} variant="outline">
-                            <CardBody>
-                              <Flex justify="space-between" align="center">
-                                <Text fontSize="md" fontWeight="medium">{committee}</Text>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  colorScheme="blue"
-                                  onClick={() => handleCommitteeClick(committee)}
-                                >
-                                  View Committee
-                                </Button>
-                              </Flex>
-                            </CardBody>
-                          </Card>
-                        ))}
+                        {member.committees && member.committees.length > 0 ? (
+                          member.committees.map((committee, index) => (
+                            <Card key={index} variant="outline">
+                              <CardBody>
+                                <Flex justify="space-between" align="center">
+                                  <Text fontSize="md" fontWeight="medium">{committee}</Text>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    colorScheme="blue"
+                                    onClick={() => handleCommitteeClick(committee)}
+                                  >
+                                    View Committee
+                                  </Button>
+                                </Flex>
+                              </CardBody>
+                            </Card>
+                          ))
+                        ) : (
+                          <Text color="gray.400">Not available</Text>
+                        )}
                       </VStack>
                     </TabPanel>
-
                     {/* Voting Record Panel */}
                     <TabPanel>
                       <VStack spacing={4} align="stretch">
-                        {member.votingRecord && member.votingRecord.map((record, index) => (
-                          <Card key={index} variant="outline">
-                            <CardBody>
-                              <Flex justify="space-between" align="center">
-                                <Box>
-                                  <Text fontSize="md" fontWeight="medium">Bill {record.billId}</Text>
-                                  <Text fontSize="sm" color="gray.500">Vote: {record.vote.toUpperCase()}</Text>
-                                </Box>
-                                <Badge
-                                  colorScheme={record.vote === 'yes' ? 'green' : 'red'}
-                                  fontSize="sm"
-                                >
-                                  {record.vote.toUpperCase()}
-                                </Badge>
-                              </Flex>
-                            </CardBody>
-                          </Card>
-                        ))}
+                        {member.votingRecord && member.votingRecord.length > 0 ? (
+                          member.votingRecord.map((record, index) => (
+                            <Card key={index} variant="outline">
+                              <CardBody>
+                                <Flex justify="space-between" align="center">
+                                  <Box>
+                                    <Text fontSize="md" fontWeight="medium">Bill {record.billId}</Text>
+                                    <Text fontSize="sm" color="gray.500">Vote: {record.vote.toUpperCase()}</Text>
+                                  </Box>
+                                  <Badge
+                                    colorScheme={record.vote === 'yes' ? 'green' : 'red'}
+                                    fontSize="sm"
+                                  >
+                                    {record.vote.toUpperCase()}
+                                  </Badge>
+                                </Flex>
+                              </CardBody>
+                            </Card>
+                          ))
+                        ) : (
+                          <Text color="gray.400">Not available</Text>
+                        )}
                       </VStack>
                     </TabPanel>
-
                     {/* Biography Panel */}
                     <TabPanel>
                       <Box>
@@ -977,7 +988,7 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
                         )}
                         <Text fontSize="md">
                           {member.fullName} represents {member.state}{member.district ? `'s ${member.district}th district` : ''} in the {member.district ? 'House of Representatives' : 'Senate'}. 
-                          As a {member.party === 'D' ? 'Democrat' : 'Republican'}, they serve on the following committees: {member.committees.join(', ')}.
+                          As a {member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent'}, they serve on the following committees: {member.committees && member.committees.length > 0 ? member.committees.join(', ') : 'Not available'}.
                         </Text>
                       </Box>
                     </TabPanel>
@@ -1094,20 +1105,16 @@ const ZipCodeSearchModal: React.FC<{
   );
 };
 
-const getStateVoteColor = (state: string, votes: Vote | undefined): string => {
-  if (!votes || !votes.house) return 'gray.200';
-  
-  // For now, we'll use a simple majority rule for coloring
-  // In a real app, we'd want to calculate this based on the representatives from each state
-  const total = votes.house.total;
-  const yeaPercentage = total.yea / (total.yea + total.nay);
-  
-  if (yeaPercentage > 0.5) {
-    return 'blue.500';
-  } else if (yeaPercentage < 0.5) {
-    return 'red.500';
-  }
-  return 'gray.200';
+// Default color scheme based on provided map
+const defaultStateColors: Record<string, string> = {
+  // Solid blue
+  WA: '#3576b8', OR: '#3576b8', CA: '#3576b8', HI: '#3576b8', IL: '#3576b8', NY: '#3576b8', VT: '#3576b8', MA: '#3576b8', CT: '#3576b8', RI: '#3576b8', NJ: '#3576b8', DE: '#3576b8', MD: '#3576b8', ME: '#3576b8', DC: '#3576b8', CO: '#3576b8', NM: '#3576b8', MN: '#3576b8',
+  // Solid red
+  ID: '#e05a4e', MT: '#e05a4e', WY: '#e05a4e', ND: '#e05a4e', SD: '#e05a4e', NE: '#e05a4e', KS: '#e05a4e', OK: '#e05a4e', TX: '#e05a4e', MO: '#e05a4e', AR: '#e05a4e', LA: '#e05a4e', MS: '#e05a4e', AL: '#e05a4e', TN: '#e05a4e', KY: '#e05a4e', IN: '#e05a4e', WV: '#e05a4e', SC: '#e05a4e',
+  // Swing states (light blue or light red)
+  WI: '#7db7e8', MI: '#7db7e8', PA: '#7db7e8', NV: '#f7b2a0', AZ: '#f7b2a0', GA: '#f7b2a0', NC: '#f7b2a0',
+  // Others (use red as default for AK, FL, IA, OH, NH)
+  AK: '#e05a4e', FL: '#e05a4e', IA: '#e05a4e', OH: '#e05a4e', NH: '#3576b8', // NH is blue in your map
 };
 
 // Update the EnhancedMap component
@@ -1116,7 +1123,8 @@ const EnhancedMap: React.FC<{
   selectedState: string | null;
   onSelectState: (state: string) => void;
   homeState?: string;
-}> = ({ bill, selectedState, onSelectState, homeState }) => {
+  setSelectedMember: (member: Member) => void;
+}> = ({ bill, selectedState, onSelectState, homeState, setSelectedMember }) => {
   const [tooltipContent, setTooltipContent] = useState<string | null>(null);
   const { isOpen: isStateModalOpen, onOpen: onStateModalOpen, onClose: onStateModalClose } = useDisclosure();
   const { isOpen: isZipModalOpen, onOpen: onZipModalOpen, onClose: onZipModalClose } = useDisclosure();
@@ -1127,15 +1135,44 @@ const EnhancedMap: React.FC<{
     setPosition(position);
   }, []);
 
+  // Color states based on static voting/member data
   const voteColors = useMemo(() => {
     const colors: Record<string, string> = {};
     stateList.forEach(state => {
-      colors[state.code] = getStateVoteColor(state.code, bill?.votes);
+      const houseVotes = bill?.votes?.house as any;
+      if (houseVotes && houseVotes.byState && houseVotes.byState[state.code]) {
+        const stateVote = houseVotes.byState[state.code];
+        const totalVotes = (stateVote.yea || 0) + (stateVote.nay || 0);
+        if (totalVotes > 0) {
+          const yeaPct = stateVote.yea / totalVotes;
+          if (yeaPct > 0.5) {
+            const intensity = Math.min(1, (yeaPct - 0.5) / 0.5);
+            colors[state.code] = `rgba(0, 0, 255, ${intensity})`;
+          } else {
+            const intensity = Math.min(1, (0.5 - yeaPct) / 0.5);
+            colors[state.code] = `rgba(255, 0, 0, ${intensity})`;
+          }
+        } else {
+          colors[state.code] = '#D6D6DA';
+        }
+      } else {
+        // Fallback: use defaultStateColors if available, else gray
+        colors[state.code] = defaultStateColors[state.code] || '#D6D6DA';
+      }
     });
     return colors;
-  }, [bill?.votes]);
+  }, [bill]);
 
   const handleStateClick = (stateCode: string) => {
+    if (!stateCode) {
+      console.warn('No state code provided');
+      return;
+    }
+    const state = stateList.find(state => state.code === stateCode);
+    if (!state) {
+      console.warn('Invalid state code:', stateCode);
+      return;
+    }
     onSelectState(stateCode);
     onStateModalOpen();
   };
@@ -1223,8 +1260,8 @@ const EnhancedMap: React.FC<{
                       default: {
                         fill: voteColor || "#D6D6DA",
                         outline: "none",
-                        stroke: "#FFF",
-                        strokeWidth: 1,
+                        stroke: isHome ? "#1A365D" : "#FFF",
+                        strokeWidth: isHome ? 2 : 1,
                       },
                       hover: {
                         fill: voteColor || "#A5A5A5",
@@ -1270,6 +1307,7 @@ const EnhancedMap: React.FC<{
         onClose={onStateModalClose} 
         stateCode={selectedState || ''} 
         stateName={stateList.find(s => s.code === selectedState)?.name || ''}
+        onSelectMember={setSelectedMember}
       />
       <ZipCodeSearchModal
         isOpen={isZipModalOpen}
@@ -1280,27 +1318,20 @@ const EnhancedMap: React.FC<{
   );
 };
 
-const PinnedBills: React.FC<{ bills: Bill[] }> = ({ bills }) => (
+const PinnedBills: React.FC<{ bills: Bill[]; pinnedBills: string[]; onTogglePin: (bill: Bill) => void; onViewDetails: (bill: Bill) => void }> = ({ bills, pinnedBills, onTogglePin, onViewDetails }) => (
   <VStack spacing={4} align="stretch" w="100%">
     {bills.length > 0 ? (
-      bills.map((bill) => (
-        <Card key={`${bill.billType}${bill.billNumber}`} variant="outline">
-          <CardBody>
-            <Heading size="sm" mb={2}>{bill.title}</Heading>
-            <Text fontSize="sm" color="gray.600" noOfLines={2}>
-              {bill.summary}
-            </Text>
-            <HStack mt={2} spacing={2}>
-              <Badge colorScheme={bill.status.isActive ? 'green' : 'gray'}>
-                {bill.status.current}
-              </Badge>
-              <Badge colorScheme="blue">
-                {bill.committees.items[0]?.name}
-              </Badge>
-            </HStack>
-          </CardBody>
-        </Card>
-      ))
+      bills
+        .filter(bill => pinnedBills.includes(`${bill.billType.toUpperCase()}${bill.billNumber}`))
+        .map((bill) => (
+          <BillCard
+            key={`${bill.billType}${bill.billNumber}`}
+            bill={bill}
+            isPinned={pinnedBills.includes(`${bill.billType.toUpperCase()}${bill.billNumber}`)}
+            onTogglePin={onTogglePin}
+            onViewDetails={onViewDetails}
+          />
+        ))
     ) : (
       <Text color="gray.500" textAlign="center">No pinned bills</Text>
     )}
@@ -1308,9 +1339,7 @@ const PinnedBills: React.FC<{ bills: Bill[] }> = ({ bills }) => (
 );
 
 // Enhanced Footer Component
-const Footer: React.FC = () => {
-  const { pinnedBills } = useContext(AppContext);
-
+const Footer: React.FC<{ pinnedBills: string[]; handleTogglePin: (bill: Bill) => void; allBills: Bill[]; setSelectedBillForModal: (bill: Bill) => void }> = ({ pinnedBills, handleTogglePin, allBills, setSelectedBillForModal }) => {
   return (
     <Box
       as="footer"
@@ -1334,7 +1363,7 @@ const Footer: React.FC = () => {
               <AccordionIcon />
             </AccordionButton>
             <AccordionPanel pb={4}>
-              <PinnedBills bills={pinnedBills} />
+              <PinnedBills bills={allBills} pinnedBills={pinnedBills} onTogglePin={handleTogglePin} onViewDetails={setSelectedBillForModal} />
             </AccordionPanel>
           </AccordionItem>
         </Accordion>
@@ -1344,7 +1373,7 @@ const Footer: React.FC = () => {
 };
 
 // Enhanced Search Modal Component
-const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void; setSelectedMember: (member: Member) => void; setSelectedBill: (bill: Bill) => void; setSelectedBillForModal: (bill: Bill) => void }> = ({ isOpen, onClose, setSelectedMember, setSelectedBill, setSelectedBillForModal }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'bills' | 'members' | 'committees'>('bills');
@@ -1465,15 +1494,7 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                 ) : (
                   <Stack spacing={4}>
                     {searchResults.bills.map((bill) => (
-                      <Card key={`${bill.congress}-${bill.billType}-${bill.billNumber}`} variant="outline" cursor="pointer" _hover={{ bg: 'gray.50' }} onClick={() => handleBillClick(bill)}>
-                        <CardBody>
-                          <Heading size="sm">{bill.title}</Heading>
-                          <Box fontSize="sm" color="gray.600" noOfLines={2} dangerouslySetInnerHTML={{ __html: bill.summary }} />
-                          <Text fontSize="xs" color="gray.500" mt={2}>
-                            Status: {bill.latestAction?.text || 'No status available'}
-                          </Text>
-                        </CardBody>
-                      </Card>
+                      <BillCard key={`${bill.congress}-${bill.billType}-${bill.billNumber}`} bill={convertApiBill(bill)} onViewDetails={bill => setSelectedBillForModal(bill)} />
                     ))}
                     {searchResults.bills.length === 0 && (
                       <Box textAlign="center" py={8}>
@@ -1495,7 +1516,7 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                 ) : (
                   <Stack spacing={4}>
                     {searchResults.members.map((member) => (
-                      <Card key={member.id} variant="outline" cursor="pointer" _hover={{ bg: 'gray.50' }}>
+                      <Card key={member.id} variant="outline" cursor="pointer" _hover={{ bg: 'gray.50' }} onClick={() => { setSelectedMember(member); onClose(); }}>
                         <CardBody>
                           <Flex gap={4} align="center">
                             <Box
@@ -1539,7 +1560,7 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                 ) : (
                   <Stack spacing={4}>
                     {searchResults.committees.map((committee) => (
-                      <Card key={committee.id} variant="outline" cursor="pointer" _hover={{ bg: 'gray.50' }}>
+                      <Card key={committee.id || committee.systemCode || committee.name} variant="outline" cursor="pointer" _hover={{ bg: 'gray.50' }}>
                         <CardBody onClick={() => handleCommitteeClick(committee)}>
                           <Flex direction="column" gap={2}>
                             <Heading size="sm">{committee.name}</Heading>
@@ -1584,9 +1605,10 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
         <BillSummary
           billId={selectedBillId}
           isOpen={isBillOpen}
-          onClose={() => {
+          onClose={onBillClose}
+          onSelectMember={member => {
+            setSelectedMember(member);
             setSelectedBillId(null);
-            onBillClose();
           }}
         />
       )}
@@ -1603,15 +1625,34 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
   );
 };
 
+function stripHtmlTags(html: string): string {
+  if (!html) return '';
+  return html.replace(/<[^>]+>/g, '');
+}
+
 // Main App Component
 const App: React.FC = () => {
   const isMobile = useResponsiveLayout();
-  const [selectedBill, setSelectedBill] = useState<Bill>(mockBill);
-  const [selectedMember, setSelectedMember] = useState<Member>(mockMember);
+  const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+  const allMembers = staticDataService.getMembers();
+  const [selectedMember, setSelectedMember] = useState<Member>(
+    allMembers[Math.floor(Math.random() * allMembers.length)]
+  );
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const { isOpen: isSearchOpen, onOpen: onSearchOpen, onClose: onSearchClose } = useDisclosure();
   const { isOpen: isDrawerOpen, onOpen: onDrawerOpen, onClose: onDrawerClose } = useDisclosure();
   const toast = useToast();
+  const [selectedBillForModal, setSelectedBillForModal] = useState<Bill | null>(null);
+  const [pinnedBills, setPinnedBills] = useState<string[]>([]); // Array of bill IDs
+
+  const handleTogglePin = (bill: Bill) => {
+    const billId = `${bill.billType.toUpperCase()}${bill.billNumber}`;
+    setPinnedBills(prev =>
+      prev.includes(billId)
+        ? prev.filter(id => id !== billId)
+        : [...prev, billId]
+    );
+  };
 
   const handleStateSelect = (state: string) => {
     setSelectedState(state);
@@ -1635,18 +1676,6 @@ const App: React.FC = () => {
           <Container maxW="container.xl" py={4}>
             <Flex justify="space-between" align="center" wrap={{ base: 'wrap', md: 'nowrap' }} gap={4}>
               <Heading size="md">Congress Explorer</Heading>
-              <InputGroup maxW={{ base: 'full', md: '400px' }}>
-                <Input
-                  placeholder="Search bills or members..."
-                  bg="white"
-                  color="black"
-                  onClick={onSearchOpen}
-                  _placeholder={{ color: 'gray.500' }}
-                />
-                <InputRightElement>
-                  <Icon as={SearchIcon} color="gray.500" />
-                </InputRightElement>
-              </InputGroup>
               <IconButton
                 display={{ base: 'flex', md: 'none' }}
                 aria-label="Menu"
@@ -1655,13 +1684,16 @@ const App: React.FC = () => {
                 variant="outline"
                 colorScheme="whiteAlpha"
               />
+              <IconButton
+                aria-label="Search"
+                icon={<SearchIcon boxSize={6} />}
+                size="lg"
+                colorScheme="blue"
+                variant="solid"
+                onClick={onSearchOpen}
+              />
             </Flex>
           </Container>
-        </Box>
-
-        {/* API Test Component */}
-        <Box p={4} bg="gray.100">
-          <ApiTest />
         </Box>
 
         {/* Main Content */}
@@ -1678,11 +1710,30 @@ const App: React.FC = () => {
                 <AccordionPanel pb={4}>
                   <VStack spacing={6} align="stretch">
                     <Box bg="white" p={4} rounded="md" shadow="sm">
-                      <Timeline bill={selectedBill} />
+                      {selectedBill ? (
+                        <VStack spacing={6} align="stretch">
+                          <Card variant="outline">
+                            <CardBody>
+                              <Heading size="md" mb={2}>{selectedBill.title}</Heading>
+                              <Text fontSize="sm" color="gray.600" mb={2}>{stripHtmlTags(selectedBill.summary || "")}</Text>
+                              <Text fontSize="sm" color="gray.500">Sponsored by: {selectedBill.sponsor?.fullName}</Text>
+                              <Text fontSize="sm" color="gray.500">Introduced: {selectedBill.introducedDate}</Text>
+                              <Text fontSize="sm" color="gray.500">Status: {selectedBill.status?.current}</Text>
+                            </CardBody>
+                          </Card>
+                          {selectedBill.timeline && Array.isArray(selectedBill.timeline.milestones) && selectedBill.timeline.milestones.length > 0 && (
+                            <Timeline bill={selectedBill} />
+                          )}
+                        </VStack>
+                      ) : (
+                        <VStack spacing={4} align="stretch">
+                          <Heading size="md">Recent Bills</Heading>
+                          {staticDataService.getBills().slice(0, 5).map(bill => (
+                            <BillCard key={`${bill.congress}-${bill.billType}-${bill.billNumber}`} bill={convertApiBill(bill)} onViewDetails={bill => setSelectedBillForModal(bill)} isPinned={pinnedBills.includes(`${bill.billType.toUpperCase()}${bill.billNumber}`)} onTogglePin={handleTogglePin} />
+                          ))}
+                        </VStack>
+                      )}
                     </Box>
-                    {/* <Box bg="white" p={4} rounded="md" shadow="sm">
-                      <BillSummary bill={selectedBill} />
-                    </Box> */}
                   </VStack>
                 </AccordionPanel>
               </AccordionItem>
@@ -1701,9 +1752,22 @@ const App: React.FC = () => {
                         selectedState={selectedState}
                         onSelectState={handleStateSelect}
                         homeState="CA"
+                        setSelectedMember={setSelectedMember}
                       />
                     </Box>
                     <Box bg="white" p={4} rounded="md" shadow="sm">
+                      <Flex justify="flex-end" mb={2}>
+                        <IconButton
+                          icon={<RepeatIcon />}
+                          aria-label="Refresh Member"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const randomMember = allMembers[Math.floor(Math.random() * allMembers.length)];
+                            setSelectedMember(randomMember);
+                          }}
+                        />
+                      </Flex>
                       <MemberCard member={selectedMember} />
                     </Box>
                   </VStack>
@@ -1711,102 +1775,38 @@ const App: React.FC = () => {
               </AccordionItem>
             </Accordion>
           ) : (
-            <Grid
-              templateColumns="1fr 2px 1fr"
-              gap={6}
-              bg="white"
-              p={6}
-              rounded="lg"
-              shadow="md"
-            >
-              {/* Left Panel - Bill Interface */}
-              <VStack spacing={6} align="stretch">
-                <Box p={4} bg="gray.50" rounded="md">
-                  <Timeline bill={selectedBill} />
-                </Box>
-                {/* <Box p={4} bg="gray.50" rounded="md">
-                  <BillSummary bill={selectedBill} />
-                </Box> */}
-              </VStack>
-
-              {/* Divider */}
-              <Box 
-                position="relative" 
-                cursor="col-resize" 
-                _hover={{ bg: "gray.100" }}
-                onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-                  const startX = e.clientX;
-                  const parentElement = e.currentTarget?.parentElement as HTMLDivElement | null;
-                  const leftPanel = parentElement?.firstElementChild as HTMLDivElement | null;
-                  const startWidth = leftPanel?.offsetWidth || 0;
-                  
-                  const handleMouseMove = (e: MouseEvent) => {
-                    const delta = e.clientX - startX;
-                    const newWidth = Math.min(Math.max(startWidth + delta, 300), 600);
-                    if (leftPanel) {
-                      leftPanel.style.width = `${newWidth}px`;
-                    }
-                  };
-                  
-                  const handleMouseUp = () => {
-                    document.removeEventListener('mousemove', handleMouseMove);
-                    document.removeEventListener('mouseup', handleMouseUp);
-                  };
-                  
-                  document.addEventListener('mousemove', handleMouseMove);
-                  document.addEventListener('mouseup', handleMouseUp);
-                }}
-              >
-                <Divider orientation="vertical" borderColor="gray.200" />
-              </Box>
-
-              {/* Right Panel - Member Interface */}
-              <VStack spacing={6} align="stretch" minW="0" flex="1">
-                <Box p={4} bg="gray.50" rounded="md" minW="0" w="100%" overflow="hidden" minH="200px" maxH="600px">
+            <Stack direction="column" spacing={8}>
+              {/* Top Panel: Map and Member Interface side by side */}
+              <HStack align="start" spacing={6} w="100%">
+                <Box flex={1} minW={0}>
                   <EnhancedMap
                     bill={selectedBill}
                     selectedState={selectedState}
                     onSelectState={handleStateSelect}
                     homeState="CA"
+                    setSelectedMember={setSelectedMember}
                   />
                 </Box>
-
-                {/* Horizontal Divider */}
-                <Box 
-                  position="relative" 
-                  cursor="row-resize" 
-                  _hover={{ bg: "gray.100" }}
-                  onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-                    const startY = e.clientY;
-                    const parentElement = e.currentTarget?.parentElement as HTMLDivElement | null;
-                    const mapBox = parentElement?.firstElementChild as HTMLDivElement | null;
-                    const startHeight = mapBox?.offsetHeight || 0;
-                    
-                    const handleMouseMove = (e: MouseEvent) => {
-                      const delta = e.clientY - startY;
-                      const newHeight = Math.min(Math.max(startHeight + delta, 200), 600);
-                      if (mapBox) {
-                        mapBox.style.height = `${newHeight}px`;
-                      }
-                    };
-                    
-                    const handleMouseUp = () => {
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-                    
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                >
-                  <Divider borderColor="gray.200" />
-                </Box>
-
-                <Box p={4} bg="gray.50" rounded="md">
+                <Box flex={1} minW={0}>
                   <MemberCard member={selectedMember} />
                 </Box>
-              </VStack>
-            </Grid>
+              </HStack>
+              {/* Bottom Panel: Recent Bills */}
+              <Box>
+                <Heading size="md" mb={4}>Recent Bills</Heading>
+                <VStack spacing={4} align="stretch">
+                  {staticDataService.getBills().slice(0, 5).map(bill => (
+                    <BillCard
+                      key={`${bill.congress}-${bill.billType}-${bill.billNumber}`}
+                      bill={convertApiBill(bill)}
+                      onViewDetails={bill => setSelectedBillForModal(bill)}
+                      isPinned={pinnedBills.includes(`${bill.billType.toUpperCase()}${bill.billNumber}`)}
+                      onTogglePin={handleTogglePin}
+                    />
+                  ))}
+                </VStack>
+              </Box>
+            </Stack>
           )}
         </Container>
 
@@ -1847,10 +1847,10 @@ const App: React.FC = () => {
         </Box>
 
         {/* Footer */}
-        <Footer />
+        <Footer pinnedBills={pinnedBills} handleTogglePin={handleTogglePin} allBills={staticDataService.getBills().map(convertApiBill)} setSelectedBillForModal={setSelectedBillForModal} />
 
         {/* Search Modal */}
-        <SearchModal isOpen={isSearchOpen} onClose={onSearchClose} />
+        <SearchModal isOpen={isSearchOpen} onClose={onSearchClose} setSelectedMember={setSelectedMember} setSelectedBill={setSelectedBill} setSelectedBillForModal={setSelectedBillForModal} />
 
         {/* Mobile Drawer */}
         <Drawer isOpen={isDrawerOpen} placement="right" onClose={onDrawerClose}>
@@ -1868,6 +1868,20 @@ const App: React.FC = () => {
           </DrawerContent>
         </Drawer>
       </Flex>
+
+      {selectedBillForModal && (
+        <BillSummary
+          billId={`${selectedBillForModal.billType.toUpperCase()}${selectedBillForModal.billNumber}`}
+          isOpen={!!selectedBillForModal}
+          onClose={() => setSelectedBillForModal(null)}
+          onSelectMember={member => {
+            setSelectedMember(member);
+            setSelectedBillForModal(null);
+          }}
+          isPinned={pinnedBills.includes(`${selectedBillForModal.billType.toUpperCase()}${selectedBillForModal.billNumber}`)}
+          onTogglePin={() => handleTogglePin(selectedBillForModal)}
+        />
+      )}
     </ChakraProvider>
   );
 };
