@@ -6,25 +6,80 @@ const API_KEY = 'J4N7j25etRGL0VI3fRq9Jr6hwtCx3YaegSUcsTUP';
 const BASE_URL = 'https://api.congress.gov/v3';
 const OUTPUT_PATH = path.join(__dirname, '../src/data/members.json');
 const CONGRESS = 119;
-const PAGE_SIZE = 535;
+const PAGE_SIZE = 100;
 const EXPECTED_TOTAL = 535;
 
 async function fetchAllMemberSummaries() {
   let offset = 0;
-  let total = 1;
   let summaries = [];
-  while (offset < total) {
-    const url = `${BASE_URL}/member?congress=${CONGRESS}&limit=${PAGE_SIZE}&offset=${offset}&api_key=${API_KEY}`;
-    console.log(`[INFO] Fetching member summaries: ${url}`);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch member summaries: ${res.status}`);
-    const data = await res.json();
-    total = data.pagination.totalCount;
-    summaries = summaries.concat(data.members || []);
-    console.log(`[INFO] Fetched ${summaries.length}/${total} member summaries so far (last batch: ${data.members.length})`);
-    offset += PAGE_SIZE;
+  let retryCount = 0;
+  const MAX_RETRIES = 3;
+  let hasMore = true;
+
+  while (hasMore) {
+    try {
+      const url = `${BASE_URL}/member?congress=${CONGRESS}&limit=${PAGE_SIZE}&offset=${offset}&api_key=${API_KEY}`;
+      console.log(`[INFO] Fetching member summaries: ${url}`);
+      const res = await fetch(url);
+      
+      if (!res.ok) {
+        throw new Error(`Failed to fetch member summaries: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      
+      if (!data.members || !Array.isArray(data.members)) {
+        throw new Error('Invalid response format: members array missing');
+      }
+      
+      const newMembers = data.members;
+      if (newMembers.length === 0) {
+        hasMore = false;
+        break;
+      }
+      
+      summaries = summaries.concat(newMembers);
+      console.log(`[INFO] Fetched ${summaries.length} member summaries so far (last batch: ${newMembers.length})`);
+      
+      offset += PAGE_SIZE;
+      retryCount = 0; // Reset retry count on successful fetch
+      
+      // If we've reached the expected total, stop fetching
+      if (summaries.length >= EXPECTED_TOTAL) {
+        hasMore = false;
+      }
+    } catch (error) {
+      console.error(`[ERROR] Attempt ${retryCount + 1}/${MAX_RETRIES} failed:`, error.message);
+      retryCount++;
+      
+      if (retryCount >= MAX_RETRIES) {
+        throw new Error(`Failed to fetch member summaries after ${MAX_RETRIES} attempts`);
+      }
+      
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+    }
   }
-  return { summaries, total };
+
+  // Verify we have the expected number of members
+  if (summaries.length !== EXPECTED_TOTAL) {
+    console.warn(`[WARN] Expected ${EXPECTED_TOTAL} members but got ${summaries.length}`);
+    
+    // Filter out any duplicate members based on bioguideId
+    const uniqueMembers = summaries.reduce((acc, member) => {
+      if (!acc.find(m => m.bioguideId === member.bioguideId)) {
+        acc.push(member);
+      }
+      return acc;
+    }, []);
+    
+    if (uniqueMembers.length !== summaries.length) {
+      console.log(`[INFO] Removed ${summaries.length - uniqueMembers.length} duplicate members`);
+      summaries = uniqueMembers;
+    }
+  }
+
+  return { summaries, total: summaries.length };
 }
 
 async function fetchMemberDetails(bioguideId) {

@@ -1,34 +1,305 @@
 import bills from '../data/bills.json';
 import members from '../data/members.json';
 import committees from '../data/committees.json';
-import votes from '../data/votes.json';
-import { Member } from '../types/member';
+import { Member, MemberDepiction } from '../types/member';
+import { Committee, CommitteeMember, Meeting, Activity, Subcommittee } from '../types/committee';
+import { Bill, Vote } from '../types/bill';
+
+interface RawMember {
+  bioguideId: string;
+  firstName: string;
+  lastName: string;
+  directOrderName: string;
+  invertedOrderName: string;
+  honorificName: string;
+  name: string;
+  partyName: string;
+  party: string;
+  state: string;
+  district?: number;
+  chamber: string;
+  partyHistory: Array<{
+    partyAbbreviation: string;
+    partyName: string;
+    startYear: number;
+  }>;
+  depiction?: MemberDepiction;
+  terms: Array<{
+    congress: number;
+    chamber: string;
+    district: number;
+    startYear: number;
+    endYear?: number;
+    stateCode: string;
+    stateName: string;
+  }>;
+  sponsoredLegislation?: {
+    count: number;
+    url: string;
+  };
+  cosponsoredLegislation?: {
+    count: number;
+    url: string;
+  };
+  updateDate?: string;
+  url: string;
+}
+
+interface RawBill {
+  congress: number;
+  billType: string;
+  billNumber: string;
+  title: string;
+  displayTitle: string;
+  summary?: string;
+  introducedDate: string;
+  policyArea: {
+    name: string;
+  };
+  sponsor: {
+    bioguideId: string;
+    district: number;
+    firstName: string;
+    fullName: string;
+    isByRequest: string;
+    lastName: string;
+    party: string;
+    state: string;
+    url: string;
+  };
+  latestAction?: {
+    actionDate: string;
+    text: string;
+  };
+  committees?: {
+    count: number;
+    items: Array<{
+      activities: Array<{
+        date: string;
+        name: string;
+      }>;
+      chamber: string;
+      name: string;
+      systemCode: string;
+      type: string;
+      url: string;
+    }>;
+  };
+  textVersions: {
+    count: number;
+    url: string;
+  };
+  votes?: {
+    committee?: {
+      date: string;
+      committee: string;
+      result: string;
+      total: {
+        yea: number;
+        nay: number;
+        present: number;
+        notVoting: number;
+      }
+    };
+    house?: {
+      total: {
+        yea: number;
+        nay: number;
+        present: number;
+        notVoting: number;
+      };
+      byParty: {
+        D: {
+          yea: number;
+          nay: number;
+          present: number;
+          notVoting: number;
+        };
+        R: {
+          yea: number;
+          nay: number;
+          present: number;
+          notVoting: number;
+        };
+      };
+    };
+    senate?: {
+      total: {
+        yea: number;
+        nay: number;
+        present: number;
+        notVoting: number;
+      };
+      byParty: {
+        D: {
+          yea: number;
+          nay: number;
+          present: number;
+          notVoting: number;
+        };
+        R: {
+          yea: number;
+          nay: number;
+          present: number;
+          notVoting: number;
+        };
+      };
+    };
+  };
+}
+
+interface RawCommittee {
+  congress: number;
+  chamber: string;
+  committeeId: string;
+  systemCode: string;
+  name: string;
+  type: string;
+  description: string;
+  url: string;
+  jurisdiction: string[];
+  members: Array<{
+    id: string;
+    role: string;
+    name: string;
+    state: string;
+    party: string;
+  }>;
+  meetings: Array<{
+    id: string;
+    title: string;
+    date: string;
+    status: string;
+    location: string;
+    description: string;
+  }>;
+  recentActivity: Array<{
+    date: string;
+    type: string;
+    description: string;
+  }>;
+  subcommittees: Array<{
+    name: string;
+    systemCode: string;
+    chair: string;
+    rankingMember: string;
+  }>;
+}
+
+// Mock committee data for initial state
+const mockCommittees = [
+  {
+    congress: 119,
+    chamber: "house",
+    committeeId: "HSAP",
+    systemCode: "hsap00",
+    name: "House Committee on Appropriations",
+    type: "Standing",
+    description: "The House Committee on Appropriations is responsible for passing appropriation bills along with its Senate counterpart.",
+    url: "https://appropriations.house.gov/",
+    jurisdiction: ["Defense spending", "Federal government operations"],
+    members: [
+      {
+        id: "M001",
+        role: "Chair",
+        name: "Rep. Kay Granger",
+        state: "TX",
+        party: "R"
+      }
+    ],
+    meetings: [
+      {
+        id: "MTG001",
+        title: "FY2024 Defense Appropriations Bill Markup",
+        date: "2024-03-15T10:00:00Z",
+        status: "scheduled",
+        location: "H-140 U.S. Capitol",
+        description: "Full committee markup of the FY2024 Defense Appropriations Bill"
+      }
+    ],
+    recentActivity: [
+      {
+        date: "2024-03-10",
+        type: "hearing",
+        description: "Hearing on Department of Defense Budget Request"
+      }
+    ],
+    subcommittees: [
+      {
+        name: "Defense",
+        systemCode: "hsap01",
+        chair: "Ken Calvert",
+        rankingMember: "Betty McCollum"
+      }
+    ]
+  }
+];
 
 /**
  * Transforms raw member data into the expected Member interface format
  */
-function transformMember(rawMember: any): Member {
-  // Extract committee assignments from partyHistory if available
-  const committees = rawMember.partyHistory?.map((history: any) => history.committee) || [];
-  
+function transformMember(rawMember: RawMember): Member {
   return {
-    id: rawMember.bioguideId, // Use bioguideId as the id
+    id: rawMember.bioguideId,
     bioguideId: rawMember.bioguideId,
-    firstName: rawMember.firstName || '',
-    lastName: rawMember.lastName || '',
-    fullName: rawMember.directOrderName || `${rawMember.firstName} ${rawMember.lastName}`,
-    state: rawMember.state || '',
-    district: rawMember.district?.toString() || undefined,
-    party: rawMember.party || '',
-    chamber: rawMember.chamber || '',
-    committees: committees,
-    contactInfo: undefined, // Not available in raw data
-    reelectionDate: undefined, // Not available in raw data
-    photoUrl: rawMember.depiction?.imageUrl || undefined,
-    votingRecord: undefined, // Not available in raw data
-    depiction: rawMember.depiction || undefined,
-    createdAt: undefined, // Not available in raw data
-    updatedAt: undefined // Not available in raw data
+    firstName: rawMember.firstName,
+    lastName: rawMember.lastName,
+    fullName: rawMember.directOrderName,
+    state: rawMember.state,
+    district: rawMember.district?.toString(),
+    party: rawMember.party,
+    chamber: rawMember.chamber.toLowerCase().includes('house') ? 'house' : 'senate',
+    committees: [], // We'll need to get this from a different source
+    contactInfo: undefined,
+    reelectionDate: undefined,
+    photoUrl: rawMember.depiction?.imageUrl,
+    votingRecord: undefined,
+    depiction: rawMember.depiction,
+    createdAt: undefined,
+    updatedAt: rawMember.updateDate
+  };
+}
+
+/**
+ * Transforms raw committee data into the expected Committee interface format
+ */
+function transformCommittee(rawCommittee: RawCommittee): Committee {
+  return {
+    congress: rawCommittee.congress,
+    chamber: rawCommittee.chamber as 'house' | 'senate',
+    committeeId: rawCommittee.committeeId,
+    systemCode: rawCommittee.systemCode,
+    name: rawCommittee.name,
+    type: rawCommittee.type as Committee['type'],
+    description: rawCommittee.description || '',
+    url: rawCommittee.url || '',
+    jurisdiction: rawCommittee.jurisdiction || [],
+    members: (rawCommittee.members || []).map((member): CommitteeMember => ({
+      id: member.id,
+      role: member.role || '',
+      name: member.name,
+      state: member.state,
+      party: member.party as 'D' | 'R' | 'I'
+    })),
+    meetings: (rawCommittee.meetings || []).map((meeting): Meeting => ({
+      id: meeting.id,
+      title: meeting.title,
+      date: meeting.date,
+      status: meeting.status as Meeting['status'],
+      location: meeting.location,
+      description: meeting.description
+    })),
+    recentActivity: (rawCommittee.recentActivity || []).map((activity): Activity => ({
+      date: activity.date,
+      type: activity.type as Activity['type'],
+      description: activity.description
+    })),
+    subcommittees: (rawCommittee.subcommittees || []).map((subcommittee): Subcommittee => ({
+      name: subcommittee.name,
+      systemCode: subcommittee.systemCode,
+      chair: subcommittee.chair,
+      rankingMember: subcommittee.rankingMember
+    }))
   };
 }
 
@@ -43,19 +314,18 @@ export const staticDataService = {
    * @returns {Array} Array of all bills
    */
   getBills() {
-    return bills;
+    return bills as RawBill[];
   },
 
   /**
    * Get a bill by its congress, type, and number.
-   * @param {number} congress - Congress number
-   * @param {string} type - Bill type (e.g., 'HR', 'S')
-   * @param {number} number - Bill number
-   * @returns {object|null} Bill object or null if not found
+   * @param {string} billId - Bill ID in the format "HR1234" or "S1234"
+   * @returns {RawBill|null} Bill object or null if not found
    */
-  getBillById(congress: number, type: string, number: number) {
-    return bills.find(bill => 
-      bill.congress === congress && 
+  getBillById(billId: string): RawBill | null {
+    const type = billId.substring(0, 2);
+    const number = billId.substring(2);
+    return (bills as RawBill[]).find(bill => 
       bill.billType === type && 
       bill.billNumber === number
     ) || null;
@@ -63,20 +333,22 @@ export const staticDataService = {
 
   /**
    * Get all bills sponsored by a specific member.
-   * @param {string} id - Sponsor's id
+   * @param {string} id - Sponsor's bioguideId
    * @returns {Array} Array of bills
    */
   getBillsBySponsor(id: string) {
-    return bills.filter(bill => bill.sponsor && bill.sponsor.id === id);
+    return (bills as RawBill[]).filter(bill => bill.sponsor && bill.sponsor.bioguideId === id);
   },
 
   /**
    * Get all bills with a specific status (e.g., 'ENACTED:SIGNED').
-   * @param {string} status - Bill status
-   * @returns {Array} Array of bills
+   * @param {string} status - Bill status text to match in latestAction
+   * @returns {Array<RawBill>} Array of bills
    */
-  getBillsByStatus(status: string) {
-    return bills.filter(bill => bill.status === status);
+  getBillsByStatus(status: string): RawBill[] {
+    return (bills as RawBill[]).filter(bill => 
+      bill.latestAction && bill.latestAction.text.includes(status)
+    );
   },
 
   /**
@@ -85,35 +357,34 @@ export const staticDataService = {
    * @returns {Array} Array of bills
    */
   getBillsByCommittee(committeeId: string) {
-    // This assumes committeeId is referenced in bill.latestAction.text or similar
-    return bills.filter(bill => bill.latestAction && bill.latestAction.text && bill.latestAction.text.includes(committeeId));
+    return (bills as RawBill[]).filter(bill => bill.latestAction && bill.latestAction.text && bill.latestAction.text.includes(committeeId));
   },
 
   /**
    * Get all members.
-   * @returns {Array} Array of all members
+   * @returns {Array<Member>} Array of all members
    */
-  getMembers() {
-    return members.map(transformMember);
+  getMembers(): Member[] {
+    return (members as unknown as RawMember[]).map(transformMember);
   },
 
   /**
    * Get a member by their id.
    * @param {string} id - Member's id
-   * @returns {object|null} Member object or null if not found
+   * @returns {Member|null} Member object or null if not found
    */
-  getMemberById(id: string) {
-    const member = members.find(member => member.bioguideId === id);
+  getMemberById(id: string): Member | null {
+    const member = (members as unknown as RawMember[]).find(member => member.bioguideId === id);
     return member ? transformMember(member) : null;
   },
 
   /**
    * Get all members from a specific state.
    * @param {string} state - State abbreviation (e.g., 'CA')
-   * @returns {Array} Array of members
+   * @returns {Array<Member>} Array of members
    */
-  getMembersByState(state: string) {
-    return members
+  getMembersByState(state: string): Member[] {
+    return (members as unknown as RawMember[])
       .filter(member => member.state === state)
       .map(transformMember);
   },
@@ -121,21 +392,21 @@ export const staticDataService = {
   /**
    * Get all members in a specific chamber ('house' or 'senate').
    * @param {string} chamber - Chamber name
-   * @returns {Array} Array of members
+   * @returns {Array<Member>} Array of members
    */
-  getMembersByChamber(chamber: string) {
-    return members
-      .filter(member => member.chamber === chamber)
+  getMembersByChamber(chamber: string): Member[] {
+    return (members as unknown as RawMember[])
+      .filter(member => member.chamber.toLowerCase().includes(chamber.toLowerCase()))
       .map(transformMember);
   },
 
   /**
    * Get all members of a specific party ('D', 'R', etc.).
    * @param {string} party - Party abbreviation
-   * @returns {Array} Array of members
+   * @returns {Array<Member>} Array of members
    */
-  getMembersByParty(party: string) {
-    return members
+  getMembersByParty(party: string): Member[] {
+    return (members as unknown as RawMember[])
       .filter(member => member.party === party)
       .map(transformMember);
   },
@@ -143,59 +414,62 @@ export const staticDataService = {
   /**
    * Get all members serving on a specific committee.
    * @param {string} committeeId - Committee ID
-   * @returns {Array} Array of members
+   * @returns {Array<Member>} Array of members
    */
-  getMembersByCommittee(committeeId: string) {
-    return members
-      .filter(member => {
-        const memberCommittees = member.partyHistory?.map((history: any) => history.committee) || [];
-        return memberCommittees.includes(committeeId);
-      })
-      .map(transformMember);
+  getMembersByCommittee(committeeId: string): Member[] {
+    // For now, return an empty array since we don't have committee assignments in the raw data
+    return [];
   },
 
   /**
    * Get all committees.
-   * @returns {Array} Array of all committees
+   * @returns {Array<Committee>} Array of all committees
    */
-  getCommittees() {
-    return committees;
+  getCommittees(): Committee[] {
+    // Use mock data if no committees data exists
+    const committeeData = (committees || []).length > 0 ? committees : mockCommittees;
+    return (committeeData as unknown as RawCommittee[]).map(transformCommittee);
   },
 
   /**
    * Get a committee by its committeeId.
    * @param {string} committeeId - Committee ID
-   * @returns {object|null} Committee object or null if not found
+   * @returns {Committee|null} Committee object or null if not found
    */
-  getCommitteeById(committeeId: string) {
-    return committees.find(committee => committee.committeeId === committeeId) || null;
+  getCommitteeById(committeeId: string): Committee | null {
+    const committeeData = committees.length > 0 ? committees : mockCommittees;
+    const committee = (committeeData as unknown as RawCommittee[])
+      .find(committee => committee.committeeId === committeeId);
+    return committee ? transformCommittee(committee) : null;
   },
 
   /**
    * Get all committees in a specific chamber ('house' or 'senate').
    * @param {string} chamber - Chamber name
-   * @returns {Array} Array of committees
+   * @returns {Array<Committee>} Array of committees
    */
-  getCommitteesByChamber(chamber: string) {
-    return committees.filter(committee => committee.chamber === chamber);
-  },
-
-  // Votes
-
-  /**
-   * Get all votes.
-   * @returns {Array} Array of all votes
-   */
-  getVotes() {
-    return votes;
+  getCommitteesByChamber(chamber: string): Committee[] {
+    const committeeData = committees.length > 0 ? committees : mockCommittees;
+    return (committeeData as unknown as RawCommittee[])
+      .filter(committee => committee.chamber === chamber)
+      .map(transformCommittee);
   },
 
   /**
-   * Get all votes for a specific bill by billId.
-   * @param {string} billId - Bill ID
-   * @returns {Array} Array of votes
+   * Get votes for a specific bill
+   * @param {string} billId - Bill ID in the format "HR1234" or "S1234"
+   * @returns {Vote|null} Vote object or null if not found
    */
-  getVotesByBill(billId: string) {
-    return votes.filter(vote => vote.billId === billId);
+  getVotesByBill(billId: string): Vote | null {
+    const bill = this.getBillById(billId);
+    return bill?.votes || null;
+  },
+
+  /**
+   * Get voting record for a member
+   */
+  getMemberVotingRecord(memberId: string): Array<{billId: string; vote: string}> {
+    // For MVP, we'll return an empty array as voting records will be added later
+    return [];
   }
 }; 

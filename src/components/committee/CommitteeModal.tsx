@@ -1,30 +1,32 @@
 import React from 'react';
 import {
-  Badge,
-  Box,
-  Card,
-  CardBody,
-  CardHeader,
-  Flex,
-  Grid,
-  Heading,
-  Link,
   Modal,
-  ModalBody,
-  ModalCloseButton,
+  ModalOverlay,
   ModalContent,
   ModalHeader,
-  ModalOverlay,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
+  ModalBody,
+  ModalCloseButton,
   Tabs,
-  Text,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
   VStack,
+  Card,
+  CardHeader,
+  CardBody,
+  Heading,
+  Text,
+  Grid,
+  Box,
+  Badge,
+  Flex,
+  Link,
+  UnorderedList,
+  ListItem
 } from '@chakra-ui/react';
+import { Committee, CommitteeMember, Meeting, Activity, Subcommittee } from '../../types/committee';
 import { ExternalLinkIcon } from '@chakra-ui/icons';
-import { Committee } from '../../types/committee';
 
 interface CommitteeModalProps {
   isOpen: boolean;
@@ -52,17 +54,67 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
           <Text fontSize="sm" color="gray.500">
             {committee.chamber.charAt(0).toUpperCase() + committee.chamber.slice(1)} Committee • {committee.congress}th Congress
           </Text>
+          <Text fontSize="md" mt={2} color="gray.700">
+            {committee.description}
+          </Text>
+          <Flex gap={2} mt={2}>
+            <Badge colorScheme={committee.chamber === 'house' ? 'blue' : 'purple'}>
+              {committee.chamber.charAt(0).toUpperCase() + committee.chamber.slice(1)}
+            </Badge>
+            <Badge colorScheme="gray">{committee.type}</Badge>
+          </Flex>
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody pb={6}>
           <Tabs>
             <TabList>
+              <Tab>Overview</Tab>
               <Tab>Members</Tab>
               <Tab>Meetings</Tab>
-              <Tab>Reports</Tab>
+              <Tab>Activity</Tab>
             </TabList>
 
             <TabPanels>
+              {/* Overview Panel */}
+              <TabPanel>
+                <VStack spacing={6} align="stretch">
+                  <Box>
+                    <Heading size="md" mb={4}>Jurisdiction</Heading>
+                    <UnorderedList spacing={2}>
+                      {committee.jurisdiction?.map((item, index) => (
+                        <ListItem key={index}>{item}</ListItem>
+                      ))}
+                    </UnorderedList>
+                  </Box>
+                  
+                  <Box>
+                    <Heading size="md" mb={4}>Leadership</Heading>
+                    <Grid templateColumns="repeat(auto-fill, minmax(250px, 1fr))" gap={4}>
+                      {committee.members
+                        .filter(member => member.role === 'Chair' || member.role === 'Ranking Member')
+                        .map((leader) => (
+                          <Card key={leader.id} variant="outline">
+                            <CardBody>
+                              <Heading size="sm">{leader.name}</Heading>
+                              <Text fontSize="sm" color="gray.600">{leader.role}</Text>
+                              <Text fontSize="sm" color={leader.party === 'D' ? 'blue.500' : 'red.500'}>
+                                {leader.party === 'D' ? 'Democrat' : 'Republican'} - {leader.state}
+                              </Text>
+                            </CardBody>
+                          </Card>
+                        ))}
+                    </Grid>
+                  </Box>
+
+                  <Box>
+                    <Heading size="md" mb={4}>Contact Information</Heading>
+                    <Link href={committee.url} isExternal color="blue.500">
+                      Committee Website <ExternalLinkIcon mx="2px" />
+                    </Link>
+                  </Box>
+                </VStack>
+              </TabPanel>
+
               {/* Members Panel */}
               <TabPanel>
                 <VStack spacing={6} align="stretch">
@@ -79,9 +131,9 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                                 <Text fontSize="sm" color={member.party === 'D' ? 'blue.500' : 'red.500'}>
                                   {member.party === 'D' ? 'Democrat' : 'Republican'} - {member.state}
                                 </Text>
-                                {member.title && (
+                                {member.role && (
                                   <Text fontSize="sm" color="gray.600">
-                                    {member.title}
+                                    {member.role}
                                   </Text>
                                 )}
                               </Box>
@@ -93,30 +145,25 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                   </Box>
 
                   {/* Subcommittees */}
-                  {committee.subcommittees.length > 0 && (
+                  {committee.subcommittees && committee.subcommittees.length > 0 && (
                     <Box>
                       <Heading size="md" mb={4}>Subcommittees</Heading>
                       <VStack spacing={4} align="stretch">
                         {committee.subcommittees.map((subcommittee) => (
-                          <Card key={subcommittee.id} variant="outline">
+                          <Card key={subcommittee.systemCode} variant="outline">
                             <CardHeader>
                               <Heading size="sm">{subcommittee.name}</Heading>
                             </CardHeader>
                             <CardBody>
-                              <Grid templateColumns="repeat(auto-fill, minmax(250px, 1fr))" gap={4}>
-                                {subcommittee.members.map((member) => (
-                                  <Box key={member.id}>
-                                    <Text fontSize="sm" fontWeight="medium">{member.name}</Text>
-                                    <Text fontSize="xs" color={member.party === 'D' ? 'blue.500' : 'red.500'}>
-                                      {member.party === 'D' ? 'Democrat' : 'Republican'} - {member.state}
-                                    </Text>
-                                    {member.title && (
-                                      <Text fontSize="xs" color="gray.600">
-                                        {member.title}
-                                      </Text>
-                                    )}
-                                  </Box>
-                                ))}
+                              <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                                <Box>
+                                  <Text fontSize="sm" fontWeight="medium">Chair</Text>
+                                  <Text fontSize="sm">{subcommittee.chair}</Text>
+                                </Box>
+                                <Box>
+                                  <Text fontSize="sm" fontWeight="medium">Ranking Member</Text>
+                                  <Text fontSize="sm">{subcommittee.rankingMember}</Text>
+                                </Box>
                               </Grid>
                             </CardBody>
                           </Card>
@@ -137,7 +184,7 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                           <Box>
                             <Heading size="sm" mb={2}>{meeting.title}</Heading>
                             <Text fontSize="sm" color="gray.600">
-                              {new Date(meeting.date).toLocaleDateString()} at {meeting.time}
+                              {new Date(meeting.date).toLocaleDateString()} at {new Date(meeting.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </Text>
                             <Text fontSize="sm" color="gray.600">
                               {meeting.location}
@@ -158,31 +205,41 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                       </CardBody>
                     </Card>
                   ))}
+                  {(!committee.meetings || committee.meetings.length === 0) && (
+                    <Text color="gray.500" textAlign="center">No upcoming meetings scheduled</Text>
+                  )}
                 </VStack>
               </TabPanel>
 
-              {/* Reports Panel */}
+              {/* Activity Panel */}
               <TabPanel>
                 <VStack spacing={4} align="stretch">
-                  {committee.reports?.map((report) => (
-                    <Card key={report.id} variant="outline">
+                  {committee.recentActivity?.map((activity, index) => (
+                    <Card key={index} variant="outline">
                       <CardBody>
-                        <Heading size="sm" mb={2}>{report.title}</Heading>
-                        <Text fontSize="sm" color="gray.600">
-                          {report.reportNumber} • {new Date(report.date).toLocaleDateString()}
-                        </Text>
-                        <Link
-                          href={report.url}
-                          isExternal
-                          color="blue.500"
-                          mt={2}
-                          display="inline-block"
-                        >
-                          View Report <ExternalLinkIcon mx="2px" />
-                        </Link>
+                        <Flex justify="space-between" align="start">
+                          <Box>
+                            <Text fontSize="sm" color="gray.500">
+                              {new Date(activity.date).toLocaleDateString()}
+                            </Text>
+                            <Text fontSize="md" mt={1}>
+                              {activity.description}
+                            </Text>
+                          </Box>
+                          <Badge colorScheme={
+                            activity.type === 'hearing' ? 'blue' :
+                            activity.type === 'markup' ? 'green' :
+                            activity.type === 'legislation' ? 'purple' : 'gray'
+                          }>
+                            {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+                          </Badge>
+                        </Flex>
                       </CardBody>
                     </Card>
                   ))}
+                  {(!committee.recentActivity || committee.recentActivity.length === 0) && (
+                    <Text color="gray.500" textAlign="center">No recent activity</Text>
+                  )}
                 </VStack>
               </TabPanel>
             </TabPanels>

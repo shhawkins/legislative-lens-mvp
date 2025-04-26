@@ -19,16 +19,32 @@ import {
   VStack,
   useDisclosure,
   Spinner,
+  Badge,
+  Skeleton,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import { staticDataService } from '../../services/staticDataService';
 import Timeline from './Timeline';
 import CommitteeModal from '../committee/CommitteeModal';
+import { Bill, Vote } from '../../types/bill';
 
 interface BillSummaryProps {
   billId: string;
-  isOpen?: boolean;
-  onClose?: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
+
+type CommitteeItem = NonNullable<Bill['committees']['items'][number]>;
+
+const CommitteeDisplay: React.FC<{ committee: CommitteeItem }> = ({ committee }) => (
+  <Box>
+    <Text>{committee.name}</Text>
+    <Text fontSize="sm" color="gray.600">
+      {committee.activities.map(a => a.name).join(', ')}
+    </Text>
+  </Box>
+);
 
 /**
  * BillSummary component displays a comprehensive overview of a bill,
@@ -37,37 +53,96 @@ interface BillSummaryProps {
  * 
  * @param {BillSummaryProps} props - Component props
  * @param {string} props.billId - The bill ID in format "congress-type-number" (e.g., "118-hr-1234")
- * @param {boolean} [props.isOpen] - Whether the modal is open
- * @param {() => void} [props.onClose] - Callback to close the modal
+ * @param {boolean} props.isOpen - Whether the modal is open
+ * @param {() => void} props.onClose - Callback to close the modal
  * @returns {JSX.Element} Bill summary component
  */
-const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen: externalIsOpen, onClose: externalOnClose }) => {
-  const [bill, setBill] = useState<any | null>(null);
+const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose }) => {
+  const [bill, setBill] = useState<Bill | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isOpen: internalIsOpen, onOpen: internalOnOpen, onClose: internalOnClose } = useDisclosure();
   const { isOpen: isCommitteeOpen, onOpen: onCommitteeOpen, onClose: onCommitteeClose } = useDisclosure();
   const [selectedCommittee, setSelectedCommittee] = useState<any | null>(null);
 
-  // Use external isOpen/onClose if provided, otherwise use internal state
-  const isOpen = externalIsOpen ?? internalIsOpen;
-  const onClose = externalOnClose ?? internalOnClose;
-
   useEffect(() => {
-    const fetchBill = () => {
+    const fetchBill = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const [congress, type, number] = billId.split('-');
-        const bill = staticDataService.getBillById(parseInt(congress), type, parseInt(number));
-        setBill(bill);
+        // Format should be "HR1234" or "S1234"
+        const rawBill = staticDataService.getBillById(billId);
+        if (!rawBill) {
+          setError('Bill not found');
+          return;
+        }
+
+        // Ensure required fields are present
+        const committees = rawBill.committees || {
+          count: 0,
+          items: []
+        };
+
+        const votes: Vote = rawBill.votes || {
+          committee: undefined,
+          house: undefined,
+          senate: undefined
+        };
+
+        // Extract action details
+        const actionDetails = rawBill.latestAction?.text
+          ? rawBill.latestAction.text
+              .split(' by ')
+              .slice(1)
+              .join(' by ')
+              .split('.')
+              .filter(Boolean)[0]
+          : '';
+
+        // Transform raw bill into Bill type with required fields
+        const transformedBill: Bill = {
+          ...rawBill,
+          committees,
+          votes,
+          timeline: {
+            milestones: [
+              {
+                date: rawBill.introducedDate,
+                title: 'Introduced',
+                description: `Introduced by ${rawBill.sponsor.fullName}`,
+                status: 'complete' as const,
+                details: {
+                  actionBy: rawBill.sponsor.fullName
+                }
+              },
+              ...(rawBill.latestAction ? [{
+                date: rawBill.latestAction.actionDate,
+                title: 'Latest Action',
+                description: rawBill.latestAction.text,
+                status: 'complete' as const,
+                details: {
+                  actionBy: actionDetails || undefined
+                }
+              }] : [])
+            ]
+          },
+          status: {
+            current: rawBill.latestAction?.text || 'Introduced',
+            stage: rawBill.latestAction?.text || 'Introduced',
+            isActive: true,
+            lastUpdated: rawBill.latestAction?.actionDate || rawBill.introducedDate
+          }
+        };
+        setBill(transformedBill);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching bill:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch bill');
+        setError('Failed to load bill details');
         setLoading(false);
       }
     };
 
-    fetchBill();
+    if (billId) {
+      fetchBill();
+    }
   }, [billId]);
 
   const handleCommitteeClick = (committeeName: string) => {
@@ -78,29 +153,123 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen: externalIsOpe
     }
   };
 
-  if (loading) {
-    return (
-      <Box p={4} display="flex" justifyContent="center">
-        <Spinner size="xl" />
-      </Box>
-    );
-  }
+  if (!isOpen) return null;
 
-  if (error) {
+  const renderHeader = () => {
+    if (loading) {
+      return <Skeleton height="30px" width="80%" />;
+    }
+    if (error) {
+      return <Heading size="lg">Error Loading Bill</Heading>;
+    }
+    if (!bill) {
+      return null;
+    }
     return (
-      <Box p={4} bg="red.100" color="red.700" borderRadius="md">
-        <Text>Error: {error}</Text>
-      </Box>
+      <VStack align="start" spacing={2}>
+        <Heading size="lg">{bill.title}</Heading>
+        <HStack spacing={2}>
+          <Badge colorScheme="blue">{bill.billType} {bill.billNumber}</Badge>
+          <Badge colorScheme={bill.status.isActive ? 'green' : 'gray'}>
+            {bill.status.current}
+          </Badge>
+        </HStack>
+      </VStack>
     );
-  }
+  };
 
-  if (!bill) {
+  const renderBody = () => {
+    if (loading) {
+      return (
+        <VStack spacing={4} align="stretch">
+          <Skeleton height="100px" />
+          <Skeleton height="60px" />
+          <Skeleton height="80px" />
+        </VStack>
+      );
+    }
+    if (error) {
+      return (
+        <Alert status="error">
+          <AlertIcon />
+          {error}
+        </Alert>
+      );
+    }
+    if (!bill) {
+      return <Text color="gray.500">No bill details available</Text>;
+    }
     return (
-      <Box p={4} bg="yellow.100" color="yellow.700" borderRadius="md">
-        <Text>Bill not found</Text>
-      </Box>
+      <VStack spacing={6} align="stretch">
+        <Box>
+          <Text fontSize="sm" color="gray.500">Summary</Text>
+          <Text mt={1}>{bill.summary || 'No summary available'}</Text>
+        </Box>
+        
+        <Box>
+          <Text fontSize="sm" color="gray.500">Sponsor</Text>
+          <Text mt={1}>{bill.sponsor.fullName}</Text>
+          <Text fontSize="sm" color="gray.600">
+            {bill.sponsor.party === 'D' ? 'Democrat' : 'Republican'} - {bill.sponsor.state}
+          </Text>
+        </Box>
+
+        <Box>
+          <Text fontSize="sm" color="gray.500">Latest Action</Text>
+          {bill.latestAction && (
+            <>
+              <Text mt={1}>{bill.latestAction.text}</Text>
+              <Text fontSize="sm" color="gray.600">
+                {new Date(bill.latestAction.actionDate).toLocaleDateString()}
+              </Text>
+            </>
+          )}
+        </Box>
+
+        <Box>
+          <Text fontSize="sm" color="gray.500">Committees</Text>
+          <VStack mt={1} align="stretch" spacing={2}>
+            {bill.committees.items.map((committee, index) => (
+              <Box key={index}>
+                <CommitteeDisplay committee={committee} />
+              </Box>
+            ))}
+            {bill.committees.items.length === 0 && (
+              <Text color="gray.500">No committees assigned</Text>
+            )}
+          </VStack>
+        </Box>
+
+        {bill.votes && (
+          <Box>
+            <Text fontSize="sm" color="gray.500">Votes</Text>
+            <VStack mt={1} align="stretch" spacing={2}>
+              {bill.votes.committee && (
+                <Box>
+                  <Text fontWeight="medium">Committee Vote</Text>
+                  <Text fontSize="sm">
+                    Yea: {bill.votes.committee.total.yea} | 
+                    Nay: {bill.votes.committee.total.nay} | 
+                    Present: {bill.votes.committee.total.present}
+                  </Text>
+                </Box>
+              )}
+              {bill.votes.house && (
+                <Box>
+                  <Text fontWeight="medium">House Vote</Text>
+                  <Text fontSize="sm">
+                    Yea: {bill.votes.house.total.yea} | 
+                    Nay: {bill.votes.house.total.nay} | 
+                    Present: {bill.votes.house.total.present}
+                  </Text>
+                </Box>
+              )}
+            </VStack>
+          </Box>
+        )}
+      </VStack>
     );
-  }
+  };
 
   return (
     <>
@@ -110,16 +279,16 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen: externalIsOpe
           <Box flex="1">
             <Card>
               <CardHeader>
-                <Heading size="md">{bill.title}</Heading>
+                <Heading size="md">{bill?.title}</Heading>
               </CardHeader>
               <CardBody>
                 <Text fontSize="md" lineHeight="tall">
-                  {bill.summary || 'No summary available'}
+                  {bill?.summary || 'No summary available'}
                 </Text>
-                <Text mt={4}><strong>Status:</strong> {bill.status}</Text>
+                <Text mt={4}><strong>Status:</strong> {bill?.latestAction?.text || 'No status available'}</Text>
                 <Text>
                   <strong>Sponsor:</strong>{' '}
-                  {bill.sponsor.firstName} {bill.sponsor.lastName} ({bill.sponsor.party}-{bill.sponsor.state})
+                  {bill?.sponsor.fullName}
                 </Text>
                 <Text>
                   <strong>Committee:</strong>{' '}
@@ -128,12 +297,12 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen: externalIsOpe
                     color="blue.500"
                     cursor="pointer"
                     _hover={{ textDecoration: 'underline' }}
-                    onClick={() => handleCommitteeClick(bill.latestAction.text.split('Committee on ')[1]?.split('.')[0] || '')}
+                    onClick={() => handleCommitteeClick(bill?.latestAction?.text.split('Committee on ')[1]?.split('.')[0] || '')}
                   >
-                    {bill.latestAction.text.split('Committee on ')[1]?.split('.')[0] || 'Unknown Committee'}
+                    {bill?.latestAction?.text.split('Committee on ')[1]?.split('.')[0] || 'Unknown Committee'}
                   </Box>
                 </Text>
-                <Button mt={4} onClick={internalOnOpen}>View Full Details</Button>
+                <Button mt={4} onClick={onClose}>View Full Details</Button>
               </CardBody>
             </Card>
           </Box>
@@ -146,9 +315,9 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen: externalIsOpe
           </CardHeader>
           <CardBody>
             <VStack spacing={4} align="stretch">
-              <Text fontSize="md">• Policy Area: {bill.policyArea}</Text>
-              <Text fontSize="md">• Introduced: {new Date(bill.introducedDate).toLocaleDateString()}</Text>
-              <Text fontSize="md">• Latest Action: {bill.latestAction.text}</Text>
+              <Text fontSize="md">• Policy Area: {bill?.policyArea?.name}</Text>
+              <Text fontSize="md">• Introduced: {new Date(bill?.introducedDate || '').toLocaleDateString()}</Text>
+              <Text fontSize="md">• Latest Action: {bill?.latestAction?.text}</Text>
             </VStack>
           </CardBody>
         </Card>
@@ -167,65 +336,11 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen: externalIsOpe
         <ModalOverlay />
         <ModalContent maxW="85vw" maxH="85vh" margin="auto">
           <ModalHeader>
-            <Flex justify="space-between" align="center">
-              <Heading size="md">{bill.title}</Heading>
-            </Flex>
+            {renderHeader()}
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Grid templateColumns="1fr 2px 1fr" gap={6} h="calc(85vh - 200px)">
-              {/* Left Panel - Bill Details */}
-              <Box overflowY="auto" pr={4}>
-                <VStack spacing={6} align="stretch">
-                  <Box>
-                    <Heading size="sm" mb={2}>Summary</Heading>
-                    <Text>{bill.summary || 'No summary available'}</Text>
-                  </Box>
-                  <Box>
-                    <Heading size="sm" mb={2}>Status</Heading>
-                    <Text>{bill.status}</Text>
-                  </Box>
-                  <Box>
-                    <Heading size="sm" mb={2}>Sponsor</Heading>
-                    <Text>
-                      {bill.sponsor.firstName} {bill.sponsor.lastName} ({bill.sponsor.party}-{bill.sponsor.state})
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Heading size="sm" mb={2}>Committee</Heading>
-                    <Text>
-                      {bill.latestAction.text.split('Committee on ')[1]?.split('.')[0] || 'Unknown Committee'}
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Heading size="sm" mb={2}>Timeline</Heading>
-                    <Timeline events={[
-                      { date: bill.introducedDate, text: 'Introduced' },
-                      { date: bill.latestAction.actionDate, text: bill.latestAction.text }
-                    ]} />
-                  </Box>
-                </VStack>
-              </Box>
-
-              {/* Divider */}
-              <Box 
-                position="relative" 
-                cursor="col-resize" 
-                _hover={{ bg: "gray.100" }}
-              />
-
-              {/* Right Panel - Bill Text */}
-              <Box overflowY="auto" pl={4}>
-                <VStack spacing={6} align="stretch">
-                  <Box>
-                    <Heading size="sm" mb={2}>Bill Text</Heading>
-                    <Text>
-                      {bill.summary || 'No bill text available'}
-                    </Text>
-                  </Box>
-                </VStack>
-              </Box>
-            </Grid>
+            {renderBody()}
           </ModalBody>
         </ModalContent>
       </Modal>

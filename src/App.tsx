@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useContext } from 'react';
 import {
   ChakraProvider,
   Box,
@@ -49,6 +49,8 @@ import {
   HStack,
   Badge,
   Link,
+  UnorderedList,
+  ListItem,
 } from '@chakra-ui/react';
 import { debounce } from 'lodash';
 import { ViewIcon, AddIcon, SearchIcon, HamburgerIcon, InfoIcon, SettingsIcon, QuestionIcon, ExternalLinkIcon } from '@chakra-ui/icons';
@@ -63,7 +65,7 @@ import { getVoteColor } from './utils/voteUtils';
 
 // Import components from new structure
 import StateMembersModal from './components/member/StateMembersModal';
-import { Bill } from './types/bill';
+import { Bill, Vote } from './types/bill';
 import { Member } from './types/member';
 import { Committee } from './types/committee';
 import theme from './theme';
@@ -71,36 +73,118 @@ import ApiTest from './components/test/ApiTest';
 import BillList from './components/bill/BillList';
 import { staticDataService } from './services/staticDataService';
 import BillSummary from './components/bill/BillSummary';
+import { AppContext } from './context/AppContext';
 
 // Mock data
 const mockBill: Bill = {
-  id: 'B001',
   congress: 118,
-  number: 'H.R.1234',
-  title: 'Clean Energy Act',
-  summary: 'Promotes renewable energy adoption.',
-  status: 'In Committee',
-  sponsor: 'Rep. John Doe',
-  sponsors: ['Rep. John Doe'],
-  text: 'Full bill text would go here...',
-  committees: ['Energy and Commerce'],
-  timeline: [
-    { date: '2023-01-10', milestone: 'Introduced' },
-    { date: '2023-02-15', milestone: 'Referred to Committee' },
-  ],
-  votes: [{ memberId: 'M001', state: 'CA', vote: 'yes' }],
-  textVersions: [
-    {
-      date: '2023-03-30T04:00:00Z',
-      type: 'Introduced',
-      formats: [
-        {
-          type: 'PDF',
-          url: 'https://example.com/bill.pdf'
+  billType: 'HR',
+  billNumber: '1234',
+  title: 'Clean Energy Innovation Act of 2024',
+  displayTitle: 'Clean Energy Innovation Act of 2024',
+  summary: 'A bill to promote innovation in clean energy technologies and support their deployment.',
+  introducedDate: '2024-03-01',
+  policyArea: {
+    name: 'Energy'
+  },
+  sponsor: {
+    bioguideId: 'M001',
+    district: 5,
+    firstName: 'Cathy',
+    fullName: 'Rep. Cathy McMorris Rodgers',
+    isByRequest: 'N',
+    lastName: 'McMorris Rodgers',
+    party: 'R',
+    state: 'WA',
+    url: 'https://www.congress.gov/member/cathy-mcmorris-rodgers/M001'
+  },
+  committees: {
+    count: 1,
+    items: [{
+      activities: [{
+        date: '2024-03-15',
+        name: 'Referred to'
+      }],
+      chamber: 'House',
+      name: 'House Committee on Energy and Commerce',
+      systemCode: 'HSIF',
+      type: 'Standing',
+      url: 'https://energycommerce.house.gov/'
+    }]
+  },
+  timeline: {
+    milestones: [
+      {
+        date: '2024-03-01',
+        title: 'Introduced in House',
+        description: 'Bill introduced by Rep. McMorris Rodgers',
+        status: 'complete',
+        details: {
+          location: 'House Floor',
+          actionBy: 'Rep. McMorris Rodgers'
         }
-      ]
+      },
+      {
+        date: '2024-03-15',
+        title: 'Referred to Committee',
+        description: 'Referred to House Committee on Energy and Commerce',
+        status: 'complete',
+        details: {
+          committee: 'HSIF',
+          location: '2123 Rayburn'
+        }
+      }
+    ]
+  },
+  votes: {
+    committee: {
+      date: '2024-03-20',
+      committee: 'HSIF',
+      result: 'REPORTED',
+      total: {
+        yea: 32,
+        nay: 24,
+        present: 0,
+        notVoting: 2
+      }
+    },
+    house: {
+      total: {
+        yea: 220,
+        nay: 210,
+        present: 2,
+        notVoting: 3
+      },
+      byParty: {
+        D: {
+          yea: 200,
+          nay: 10,
+          present: 1,
+          notVoting: 1
+        },
+        R: {
+          yea: 20,
+          nay: 200,
+          present: 1,
+          notVoting: 2
+        }
+      }
     }
-  ]
+  },
+  textVersions: {
+    count: 1,
+    url: 'https://www.congress.gov/bill/118th-congress/house-bill/1234/text'
+  },
+  latestAction: {
+    actionDate: '2024-03-20',
+    text: 'Passed House vote'
+  },
+  status: {
+    current: 'IN_HOUSE',
+    stage: 'PASSED',
+    isActive: true,
+    lastUpdated: '2024-03-20'
+  }
 };
 
 const getMemberPhotoUrl = (bioguideId: string): string => {
@@ -301,7 +385,7 @@ const useResponsiveLayout = () => {
 // Enhanced Timeline Component
 const Timeline: React.FC<{ bill: Bill }> = React.memo(({ bill }) => (
   <Box position="relative" p={4}>
-    {bill.timeline.map((event, index) => (
+    {bill.timeline.milestones.map((event, index) => (
       <Flex key={index} position="relative" mb={6}>
         {/* Timeline dot and line */}
         <Box position="absolute" left={0} top={0}>
@@ -313,7 +397,7 @@ const Timeline: React.FC<{ bill: Bill }> = React.memo(({ bill }) => (
             border="2px solid white"
             boxShadow="md"
           />
-          {index < bill.timeline.length - 1 && (
+          {index < bill.timeline.milestones.length - 1 && (
             <Box
               position="absolute"
               left="7px"
@@ -340,7 +424,7 @@ const Timeline: React.FC<{ bill: Bill }> = React.memo(({ bill }) => (
             color="gray.700"
             mt={1}
           >
-            {event.milestone}
+            {event.title}
           </Text>
         </Box>
       </Flex>
@@ -350,75 +434,71 @@ const Timeline: React.FC<{ bill: Bill }> = React.memo(({ bill }) => (
 
 // Update mock committee data
 const mockCommittee: Committee = {
-  id: "HSIF",
-  name: "House Committee on Energy and Commerce",
-  chamber: "house",
-  congress: 118,
-  subcommittees: [
-    {
-      id: "HSIF00",
-      name: "Subcommittee on Innovation, Data, and Commerce",
-      members: [
-        {
-          id: "M001",
-          name: "Rep. John Doe",
-          party: "D",
-          state: "CA",
-          title: "Chair"
-        },
-        {
-          id: "M002",
-          name: "Rep. Jane Smith",
-          party: "R",
-          state: "TX",
-          title: "Ranking Member"
-        }
-      ]
-    }
+  congress: 119,
+  chamber: 'house',
+  committeeId: 'HSIF',
+  systemCode: 'hsif00',
+  name: 'House Committee on Energy and Commerce',
+  type: 'Standing',
+  description: 'The Committee on Energy and Commerce has the broadest jurisdiction of any congressional authorizing committee.',
+  url: 'https://energycommerce.house.gov/',
+  jurisdiction: [
+    'Energy policy',
+    'Health care',
+    'Consumer protection',
+    'Environmental quality',
+    'Interstate and foreign commerce'
   ],
   members: [
     {
-      id: "M001",
-      name: "Rep. John Doe",
-      party: "D",
-      state: "CA",
-      title: "Chair"
+      id: 'M001',
+      role: 'Chair',
+      name: 'Rep. Cathy McMorris Rodgers',
+      state: 'WA',
+      party: 'R'
     },
     {
-      id: "M002",
-      name: "Rep. Jane Smith",
-      party: "R",
-      state: "TX",
-      title: "Ranking Member"
+      id: 'M002',
+      role: 'Ranking Member',
+      name: 'Rep. Frank Pallone, Jr.',
+      state: 'NJ',
+      party: 'D'
     }
   ],
   meetings: [
     {
-      id: "M001",
-      date: "2024-03-15",
-      time: "10:00 AM",
-      title: "Hearing on Clean Energy Innovation",
-      location: "2123 Rayburn House Office Building",
-      description: "A hearing to discuss advancements in clean energy technology and policy.",
-      status: "scheduled"
-    },
-    {
-      id: "M002",
-      date: "2024-03-10",
-      time: "2:00 PM",
-      title: "Markup of H.R. 1234",
-      location: "2123 Rayburn House Office Building",
-      description: "Markup session for the Clean Energy Act of 2024.",
-      status: "completed"
+      id: 'MTG001',
+      title: 'Hearing on Clean Energy Innovation',
+      date: '2024-03-20T14:00:00Z',
+      status: 'scheduled',
+      location: '2123 Rayburn House Office Building',
+      description: 'Oversight hearing on clean energy technology development and deployment'
     }
   ],
-  reports: [
+  recentActivity: [
     {
-      id: "R001",
-      title: "Report on Clean Energy Innovation",
-      date: "2024-02-15",
-      reportNumber: "H. Rept. 118-123",
-      url: "https://www.congress.gov/congressional-report/118th-congress/house-report/123"
+      date: '2024-03-12',
+      type: 'legislation',
+      description: 'H.R. 1234 - Clean Energy Innovation Act Reported'
+    },
+    {
+      date: '2024-03-08',
+      type: 'hearing',
+      description: 'Hearing on Grid Reliability and Cybersecurity'
+    }
+  ],
+  subcommittees: [
+    {
+      name: 'Energy',
+      systemCode: 'hsif01',
+      chair: 'Jeff Duncan',
+      rankingMember: 'Diana DeGette'
+    },
+    {
+      name: 'Health',
+      systemCode: 'hsif02',
+      chair: 'Brett Guthrie',
+      rankingMember: 'Anna Eshoo'
     }
   ]
 };
@@ -438,17 +518,67 @@ const CommitteeModal: React.FC<{
           <Text fontSize="sm" color="gray.500">
             {committee.chamber.charAt(0).toUpperCase() + committee.chamber.slice(1)} Committee • {committee.congress}th Congress
           </Text>
+          <Text fontSize="md" mt={2} color="gray.700">
+            {committee.description}
+          </Text>
+          <Flex gap={2} mt={2}>
+            <Badge colorScheme={committee.chamber === 'house' ? 'blue' : 'purple'}>
+              {committee.chamber.charAt(0).toUpperCase() + committee.chamber.slice(1)}
+            </Badge>
+            <Badge colorScheme="gray">{committee.type}</Badge>
+          </Flex>
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody pb={6}>
           <Tabs>
             <TabList>
+              <Tab>Overview</Tab>
               <Tab>Members</Tab>
               <Tab>Meetings</Tab>
-              <Tab>Reports</Tab>
+              <Tab>Activity</Tab>
             </TabList>
 
             <TabPanels>
+              {/* Overview Panel */}
+              <TabPanel>
+                <VStack spacing={6} align="stretch">
+                  <Box>
+                    <Heading size="md" mb={4}>Jurisdiction</Heading>
+                    <UnorderedList spacing={2}>
+                      {committee.jurisdiction?.map((item, index) => (
+                        <ListItem key={index}>{item}</ListItem>
+                      ))}
+                    </UnorderedList>
+                  </Box>
+                  
+                  <Box>
+                    <Heading size="md" mb={4}>Leadership</Heading>
+                    <Grid templateColumns="repeat(auto-fill, minmax(250px, 1fr))" gap={4}>
+                      {committee.members
+                        .filter(member => member.role === 'Chair' || member.role === 'Ranking Member')
+                        .map((leader) => (
+                          <Card key={leader.id} variant="outline">
+                            <CardBody>
+                              <Heading size="sm">{leader.name}</Heading>
+                              <Text fontSize="sm" color="gray.600">{leader.role}</Text>
+                              <Text fontSize="sm" color={leader.party === 'D' ? 'blue.500' : 'red.500'}>
+                                {leader.party === 'D' ? 'Democrat' : 'Republican'} - {leader.state}
+                              </Text>
+                            </CardBody>
+                          </Card>
+                        ))}
+                    </Grid>
+                  </Box>
+
+                  <Box>
+                    <Heading size="md" mb={4}>Contact Information</Heading>
+                    <Link href={committee.url} isExternal color="blue.500">
+                      Committee Website <ExternalLinkIcon mx="2px" />
+                    </Link>
+                  </Box>
+                </VStack>
+              </TabPanel>
+
               {/* Members Panel */}
               <TabPanel>
                 <VStack spacing={6} align="stretch">
@@ -465,9 +595,9 @@ const CommitteeModal: React.FC<{
                                 <Text fontSize="sm" color={member.party === 'D' ? 'blue.500' : 'red.500'}>
                                   {member.party === 'D' ? 'Democrat' : 'Republican'} - {member.state}
                                 </Text>
-                                {member.title && (
+                                {member.role && (
                                   <Text fontSize="sm" color="gray.600">
-                                    {member.title}
+                                    {member.role}
                                   </Text>
                                 )}
                               </Box>
@@ -479,30 +609,25 @@ const CommitteeModal: React.FC<{
                   </Box>
 
                   {/* Subcommittees */}
-                  {committee.subcommittees.length > 0 && (
+                  {committee.subcommittees && committee.subcommittees.length > 0 && (
                     <Box>
                       <Heading size="md" mb={4}>Subcommittees</Heading>
                       <VStack spacing={4} align="stretch">
                         {committee.subcommittees.map((subcommittee) => (
-                          <Card key={subcommittee.id} variant="outline">
+                          <Card key={subcommittee.systemCode} variant="outline">
                             <CardHeader>
                               <Heading size="sm">{subcommittee.name}</Heading>
                             </CardHeader>
                             <CardBody>
-                              <Grid templateColumns="repeat(auto-fill, minmax(250px, 1fr))" gap={4}>
-                                {subcommittee.members.map((member) => (
-                                  <Box key={member.id}>
-                                    <Text fontSize="sm" fontWeight="medium">{member.name}</Text>
-                                    <Text fontSize="xs" color={member.party === 'D' ? 'blue.500' : 'red.500'}>
-                                      {member.party === 'D' ? 'Democrat' : 'Republican'} - {member.state}
-                                    </Text>
-                                    {member.title && (
-                                      <Text fontSize="xs" color="gray.600">
-                                        {member.title}
-                                      </Text>
-                                    )}
-                                  </Box>
-                                ))}
+                              <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                                <Box>
+                                  <Text fontSize="sm" fontWeight="medium">Chair</Text>
+                                  <Text fontSize="sm">{subcommittee.chair}</Text>
+                                </Box>
+                                <Box>
+                                  <Text fontSize="sm" fontWeight="medium">Ranking Member</Text>
+                                  <Text fontSize="sm">{subcommittee.rankingMember}</Text>
+                                </Box>
                               </Grid>
                             </CardBody>
                           </Card>
@@ -523,7 +648,7 @@ const CommitteeModal: React.FC<{
                           <Box>
                             <Heading size="sm" mb={2}>{meeting.title}</Heading>
                             <Text fontSize="sm" color="gray.600">
-                              {new Date(meeting.date).toLocaleDateString()} at {meeting.time}
+                              {new Date(meeting.date).toLocaleDateString()} at {new Date(meeting.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </Text>
                             <Text fontSize="sm" color="gray.600">
                               {meeting.location}
@@ -544,31 +669,41 @@ const CommitteeModal: React.FC<{
                       </CardBody>
                     </Card>
                   ))}
+                  {(!committee.meetings || committee.meetings.length === 0) && (
+                    <Text color="gray.500" textAlign="center">No upcoming meetings scheduled</Text>
+                  )}
                 </VStack>
               </TabPanel>
 
-              {/* Reports Panel */}
+              {/* Activity Panel */}
               <TabPanel>
                 <VStack spacing={4} align="stretch">
-                  {committee.reports?.map((report) => (
-                    <Card key={report.id} variant="outline">
+                  {committee.recentActivity?.map((activity, index) => (
+                    <Card key={index} variant="outline">
                       <CardBody>
-                        <Heading size="sm" mb={2}>{report.title}</Heading>
-                        <Text fontSize="sm" color="gray.600">
-                          {report.reportNumber} • {new Date(report.date).toLocaleDateString()}
-                        </Text>
-                        <Link
-                          href={report.url}
-                          isExternal
-                          color="blue.500"
-                          mt={2}
-                          display="inline-block"
-                        >
-                          View Report <ExternalLinkIcon mx="2px" />
-                        </Link>
+                        <Flex justify="space-between" align="start">
+                          <Box>
+                            <Text fontSize="sm" color="gray.500">
+                              {new Date(activity.date).toLocaleDateString()}
+                            </Text>
+                            <Text fontSize="md" mt={1}>
+                              {activity.description}
+                            </Text>
+                          </Box>
+                          <Badge colorScheme={
+                            activity.type === 'hearing' ? 'blue' :
+                            activity.type === 'markup' ? 'green' :
+                            activity.type === 'legislation' ? 'purple' : 'gray'
+                          }>
+                            {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+                          </Badge>
+                        </Flex>
                       </CardBody>
                     </Card>
                   ))}
+                  {(!committee.recentActivity || committee.recentActivity.length === 0) && (
+                    <Text color="gray.500" textAlign="center">No recent activity</Text>
+                  )}
                 </VStack>
               </TabPanel>
             </TabPanels>
@@ -959,6 +1094,22 @@ const ZipCodeSearchModal: React.FC<{
   );
 };
 
+const getStateVoteColor = (state: string, votes: Vote | undefined): string => {
+  if (!votes || !votes.house) return 'gray.200';
+  
+  // For now, we'll use a simple majority rule for coloring
+  // In a real app, we'd want to calculate this based on the representatives from each state
+  const total = votes.house.total;
+  const yeaPercentage = total.yea / (total.yea + total.nay);
+  
+  if (yeaPercentage > 0.5) {
+    return 'blue.500';
+  } else if (yeaPercentage < 0.5) {
+    return 'red.500';
+  }
+  return 'gray.200';
+};
+
 // Update the EnhancedMap component
 const EnhancedMap: React.FC<{
   bill: Bill | null;
@@ -978,13 +1129,11 @@ const EnhancedMap: React.FC<{
 
   const voteColors = useMemo(() => {
     const colors: Record<string, string> = {};
-    bill?.votes.forEach(vote => {
-      if (vote.state) {
-        colors[vote.state] = getVoteColor(vote.vote || 'no');
-      }
+    stateList.forEach(state => {
+      colors[state.code] = getStateVoteColor(state.code, bill?.votes);
     });
     return colors;
-  }, [bill]);
+  }, [bill?.votes]);
 
   const handleStateClick = (stateCode: string) => {
     onSelectState(stateCode);
@@ -1131,165 +1280,65 @@ const EnhancedMap: React.FC<{
   );
 };
 
+const PinnedBills: React.FC<{ bills: Bill[] }> = ({ bills }) => (
+  <VStack spacing={4} align="stretch" w="100%">
+    {bills.length > 0 ? (
+      bills.map((bill) => (
+        <Card key={`${bill.billType}${bill.billNumber}`} variant="outline">
+          <CardBody>
+            <Heading size="sm" mb={2}>{bill.title}</Heading>
+            <Text fontSize="sm" color="gray.600" noOfLines={2}>
+              {bill.summary}
+            </Text>
+            <HStack mt={2} spacing={2}>
+              <Badge colorScheme={bill.status.isActive ? 'green' : 'gray'}>
+                {bill.status.current}
+              </Badge>
+              <Badge colorScheme="blue">
+                {bill.committees.items[0]?.name}
+              </Badge>
+            </HStack>
+          </CardBody>
+        </Card>
+      ))
+    ) : (
+      <Text color="gray.500" textAlign="center">No pinned bills</Text>
+    )}
+  </VStack>
+);
+
 // Enhanced Footer Component
 const Footer: React.FC = () => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const [pinnedBills] = useState([mockBill]); // Mock data for now
+  const { pinnedBills } = useContext(AppContext);
 
   return (
-    <Box py={6} px={8} bg="gray.50">
-      <Accordion allowMultiple defaultIndex={[0, 1]}>
-        <Stack
-          direction={{ base: 'column', md: 'row' }}
-          spacing={8}
-          divider={
-            <Divider
-              display={{ base: 'none', md: 'block' }}
-              orientation="vertical"
-              height={{ md: 'inherit' }}
-            />
-          }
-        >
-          {/* Daily Highlights Section */}
-          <AccordionItem flex="1" border="none">
-            {({ isExpanded }) => (
-              <>
-                <AccordionButton px={0} _hover={{ bg: 'transparent' }}>
-                  <Heading size="md" flex="1" textAlign="left">Daily Highlights</Heading>
-                  <AccordionIcon />
-                </AccordionButton>
-                <AccordionPanel px={0}>
-                  <Grid templateColumns="repeat(auto-fill, minmax(300px, 1fr))" gap={4}>
-                    {[1, 2, 3].map((i) => (
-                      <Card key={i} variant="outline" bg="white">
-                        <CardBody>
-                          <Text fontSize="sm" color="gray.500" mb={2}>
-                            {new Date().toLocaleDateString()}
-                          </Text>
-                          <Heading size="sm" mb={2}>
-                            Committee Hearing: {mockBill.committees[0]}
-                          </Heading>
-                          <Text fontSize="sm" noOfLines={2}>
-                            Discussion on {mockBill.title} - {mockBill.summary}
-                          </Text>
-                          <Box
-                            as="div"
-                            onClick={onOpen}
-                            cursor="pointer"
-                            color="blue.500"
-                            _hover={{ color: 'blue.600' }}
-                            mt={3}
-                            fontSize="sm"
-                          >
-                            Learn More
-                          </Box>
-                        </CardBody>
-                      </Card>
-                    ))}
-                  </Grid>
-                </AccordionPanel>
-              </>
-            )}
+    <Box
+      as="footer"
+      position="fixed"
+      bottom={0}
+      left={0}
+      right={0}
+      bg="white"
+      boxShadow="0 -2px 10px rgba(0,0,0,0.1)"
+      zIndex={2}
+    >
+      <Container maxW="container.xl" py={4}>
+        <Accordion allowToggle>
+          <AccordionItem border="none">
+            <AccordionButton>
+              <Box flex="1" textAlign="left">
+                <Heading size="sm">
+                  Pinned Bills ({pinnedBills.length})
+                </Heading>
+              </Box>
+              <AccordionIcon />
+            </AccordionButton>
+            <AccordionPanel pb={4}>
+              <PinnedBills bills={pinnedBills} />
+            </AccordionPanel>
           </AccordionItem>
-
-          {/* Pinned Bills Section */}
-          <AccordionItem width={{ base: 'full', md: '250px' }} border="none">
-            {({ isExpanded }) => (
-              <>
-                <AccordionButton px={0} _hover={{ bg: 'transparent' }}>
-                  <Flex width="100%" align="center" justify="space-between">
-                    <Heading size="md" textAlign="left">Pinned Bills</Heading>
-                    <Flex align="center">
-                      <Box
-                        as="div"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpen();
-                        }}
-                        mr={2}
-                        cursor="pointer"
-                        color="blue.500"
-                        _hover={{ color: 'blue.600' }}
-                        fontSize="sm"
-                        display="flex"
-                        alignItems="center"
-                      >
-                        <Icon as={pinnedBills.length ? ViewIcon : AddIcon} mr={1} />
-                        {pinnedBills.length ? 'View All' : 'Pin Bills'}
-                      </Box>
-                      <AccordionIcon />
-                    </Flex>
-                  </Flex>
-                </AccordionButton>
-                <AccordionPanel px={0}>
-                  {pinnedBills.length > 0 ? (
-                    <Stack spacing={2}>
-                      {pinnedBills.slice(0, 2).map((bill, index) => (
-                        <Text key={index} fontSize="sm" noOfLines={1}>
-                          • {bill.title}
-                        </Text>
-                      ))}
-                      {pinnedBills.length > 2 && (
-                        <Text fontSize="sm" color="gray.500">
-                          +{pinnedBills.length - 2} more
-                        </Text>
-                      )}
-                    </Stack>
-                  ) : (
-                    <Text fontSize="sm" color="gray.500">
-                      No pinned bills yet
-                    </Text>
-                  )}
-                </AccordionPanel>
-              </>
-            )}
-          </AccordionItem>
-        </Stack>
-      </Accordion>
-
-      {/* Pinned Bills Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="xl">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Pinned Bills</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Stack spacing={4} pb={4}>
-              {pinnedBills.length > 0 ? (
-                pinnedBills.map((bill) => (
-                  <Card key={bill.id} variant="outline">
-                    <CardBody>
-                      <Heading size="sm" mb={2}>{bill.title}</Heading>
-                      <Text fontSize="sm" color="gray.600" noOfLines={2}>
-                        {bill.summary}
-                      </Text>
-                      <Flex justify="space-between" align="center" mt={3}>
-                        <Text fontSize="sm" color="gray.500">
-                          Status: {bill.status}
-                        </Text>
-                        <Box
-                          as="div"
-                          onClick={onClose}
-                          cursor="pointer"
-                          color="red.500"
-                          _hover={{ color: 'red.600' }}
-                          fontSize="sm"
-                        >
-                          Unpin
-                        </Box>
-                      </Flex>
-                    </CardBody>
-                  </Card>
-                ))
-              ) : (
-                <Text color="gray.500" textAlign="center">
-                  No bills pinned yet. Pin bills to track them here.
-                </Text>
-              )}
-            </Stack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+        </Accordion>
+      </Container>
     </Box>
   );
 };
@@ -1306,33 +1355,53 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
   }>({ bills: [], members: [], committees: [] });
   const { isOpen: isCommitteeOpen, onOpen: onCommitteeOpen, onClose: onCommitteeClose } = useDisclosure();
   const [selectedCommittee, setSelectedCommittee] = useState<Committee | null>(null);
-  // Bill modal state
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const { isOpen: isBillOpen, onOpen: onBillOpen, onClose: onBillClose } = useDisclosure();
+
+  // Get total counts for tabs
+  const totalBills = staticDataService.getBills().length;
+  const totalMembers = staticDataService.getMembers().length;
+  const totalCommittees = staticDataService.getCommittees().length;
+
+  // Load initial data
+  useEffect(() => {
+    const bills = staticDataService.getBills().slice(0, 5); // Show first 5 bills
+    const members = staticDataService.getMembers().slice(0, 5); // Show first 5 members
+    const committees = staticDataService.getCommittees().slice(0, 5); // Show first 5 committees
+    setSearchResults({ bills, members, committees });
+  }, []);
 
   const handleSearch = useCallback(async (query: string) => {
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
     const q = query.trim().toLowerCase();
-    // Bills: match in title or summary
-    const bills = staticDataService.getBills().filter(
-      (bill: any) =>
-        (bill.title && bill.title.toLowerCase().includes(q)) ||
-        (bill.summary && bill.summary.toLowerCase().includes(q))
-    );
-    // Members: match in firstName, lastName, or fullName
-    const members = staticDataService.getMembers().filter(
-      (member: any) =>
-        (member.firstName && member.firstName.toLowerCase().includes(q)) ||
-        (member.lastName && member.lastName.toLowerCase().includes(q)) ||
-        (member.fullName && member.fullName.toLowerCase().includes(q))
-    );
-    // Committees: match in name
-    const committees = staticDataService.getCommittees().filter(
-      (committee: any) =>
-        (committee.name && committee.name.toLowerCase().includes(q))
-    );
-    setSearchResults({ bills, members, committees });
+
+    if (q === '') {
+      // Show initial results if query is empty
+      const bills = staticDataService.getBills().slice(0, 5);
+      const members = staticDataService.getMembers().slice(0, 5);
+      const committees = staticDataService.getCommittees().slice(0, 5);
+      setSearchResults({ bills, members, committees });
+    } else {
+      // Filter based on search query
+      const bills = staticDataService.getBills().filter(
+        (bill: any) =>
+          (bill.title && bill.title.toLowerCase().includes(q)) ||
+          (bill.summary && bill.summary.toLowerCase().includes(q))
+      );
+      const members = staticDataService.getMembers().filter(
+        (member: any) =>
+          (member.firstName && member.firstName.toLowerCase().includes(q)) ||
+          (member.lastName && member.lastName.toLowerCase().includes(q)) ||
+          (member.fullName && member.fullName.toLowerCase().includes(q))
+      );
+      const committees = staticDataService.getCommittees().filter(
+        (committee: any) =>
+          (committee.name && committee.name.toLowerCase().includes(q)) ||
+          (committee.description && committee.description.toLowerCase().includes(q))
+      );
+      setSearchResults({ bills, members, committees });
+    }
     setIsLoading(false);
   }, []);
 
@@ -1342,7 +1411,6 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
   };
 
   const handleBillClick = (bill: any) => {
-    // Construct billId as in BillList: `${bill.congress}-${bill.billType.toLowerCase()}-${bill.billNumber}`
     setSelectedBillId(`${bill.congress}-${bill.billType.toLowerCase()}-${bill.billNumber}`);
     onBillOpen();
   };
@@ -1353,13 +1421,16 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
   );
 
   useEffect(() => {
-    if (searchQuery.trim()) {
-      debouncedSearch(searchQuery);
-    } else {
-      setSearchResults({ bills: [], members: [], committees: [] });
-    }
+    debouncedSearch(searchQuery);
     return () => debouncedSearch.cancel();
   }, [searchQuery, debouncedSearch]);
+
+  const getEmptyStateMessage = (tab: 'bills' | 'members' | 'committees') => {
+    if (searchQuery.trim() === '') {
+      return `No recent ${tab}`;
+    }
+    return `No ${tab} found matching "${searchQuery}"`;
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
@@ -1378,11 +1449,12 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
         <ModalBody>
           <Tabs variant="enclosed" onChange={(index) => setActiveTab(['bills', 'members', 'committees'][index] as any)}>
             <TabList>
-              <Tab>Bills</Tab>
-              <Tab>Members</Tab>
-              <Tab>Committees</Tab>
+              <Tab>Bills ({totalBills})</Tab>
+              <Tab>Members ({totalMembers})</Tab>
+              <Tab>Committees ({totalCommittees})</Tab>
             </TabList>
             <TabPanels>
+              {/* Bills Panel */}
               <TabPanel>
                 {isLoading ? (
                   <Stack spacing={4}>
@@ -1396,18 +1468,23 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                       <Card key={`${bill.congress}-${bill.billType}-${bill.billNumber}`} variant="outline" cursor="pointer" _hover={{ bg: 'gray.50' }} onClick={() => handleBillClick(bill)}>
                         <CardBody>
                           <Heading size="sm">{bill.title}</Heading>
-                          <Text fontSize="sm" color="gray.600" noOfLines={2}>
-                            {bill.summary}
-                          </Text>
+                          <Box fontSize="sm" color="gray.600" noOfLines={2} dangerouslySetInnerHTML={{ __html: bill.summary }} />
                           <Text fontSize="xs" color="gray.500" mt={2}>
-                            Status: {bill.status}
+                            Status: {bill.latestAction?.text || 'No status available'}
                           </Text>
                         </CardBody>
                       </Card>
                     ))}
+                    {searchResults.bills.length === 0 && (
+                      <Box textAlign="center" py={8}>
+                        <Text color="gray.500">{getEmptyStateMessage('bills')}</Text>
+                      </Box>
+                    )}
                   </Stack>
                 )}
               </TabPanel>
+
+              {/* Members Panel */}
               <TabPanel>
                 {isLoading ? (
                   <Stack spacing={4}>
@@ -1442,9 +1519,16 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                         </CardBody>
                       </Card>
                     ))}
+                    {searchResults.members.length === 0 && (
+                      <Box textAlign="center" py={8}>
+                        <Text color="gray.500">{getEmptyStateMessage('members')}</Text>
+                      </Box>
+                    )}
                   </Stack>
                 )}
               </TabPanel>
+
+              {/* Committees Panel */}
               <TabPanel>
                 {isLoading ? (
                   <Stack spacing={4}>
@@ -1457,13 +1541,36 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                     {searchResults.committees.map((committee) => (
                       <Card key={committee.id} variant="outline" cursor="pointer" _hover={{ bg: 'gray.50' }}>
                         <CardBody onClick={() => handleCommitteeClick(committee)}>
-                          <Heading size="sm">{committee.name}</Heading>
-                          <Text fontSize="sm" color="gray.600">
-                            {committee.chamber.charAt(0).toUpperCase() + committee.chamber.slice(1)} Committee
-                          </Text>
+                          <Flex direction="column" gap={2}>
+                            <Heading size="sm">{committee.name}</Heading>
+                            <Text fontSize="sm" color="gray.600" noOfLines={2}>
+                              {committee.description}
+                            </Text>
+                            <Flex gap={2} mt={1}>
+                              <Badge colorScheme={committee.chamber === 'house' ? 'blue' : 'purple'}>
+                                {committee.chamber.charAt(0).toUpperCase() + committee.chamber.slice(1)}
+                              </Badge>
+                              <Badge colorScheme="gray">{committee.type}</Badge>
+                              {committee.members.length > 0 && (
+                                <Badge colorScheme="green">
+                                  {committee.members.length} Members
+                                </Badge>
+                              )}
+                            </Flex>
+                            {committee.recentActivity && committee.recentActivity.length > 0 && (
+                              <Text fontSize="xs" color="gray.500" mt={1}>
+                                Latest: {committee.recentActivity[0].description}
+                              </Text>
+                            )}
+                          </Flex>
                         </CardBody>
                       </Card>
                     ))}
+                    {searchResults.committees.length === 0 && (
+                      <Box textAlign="center" py={8}>
+                        <Text color="gray.500">{getEmptyStateMessage('committees')}</Text>
+                      </Box>
+                    )}
                   </Stack>
                 )}
               </TabPanel>
@@ -1740,11 +1847,7 @@ const App: React.FC = () => {
         </Box>
 
         {/* Footer */}
-        <Box as="footer" bg="white" borderTop="1px" borderColor="gray.200" py={6}>
-          <Container maxW="container.xl">
-            <Footer />
-          </Container>
-        </Box>
+        <Footer />
 
         {/* Search Modal */}
         <SearchModal isOpen={isSearchOpen} onClose={onSearchClose} />

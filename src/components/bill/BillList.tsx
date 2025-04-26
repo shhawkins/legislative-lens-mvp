@@ -123,17 +123,17 @@ const BillList: React.FC = () => {
           >
             <CardBody>
               <VStack align="stretch" spacing={3}>
-                <Heading size="sm">
+                <Heading size="sm" mb={2}>
                   {bill.billType}. {bill.billNumber} - {bill.title}
                 </Heading>
-                <Text fontSize="sm" noOfLines={3}>
+                <Text fontSize="sm" color="gray.600" noOfLines={2}>
                   {bill.summary || 'No summary available'}
                 </Text>
                 <Text fontSize="xs" color="gray.500">
                   Introduced: {new Date(bill.introducedDate).toLocaleDateString()}
                 </Text>
                 <Text fontSize="xs" color="gray.500">
-                  Status: {bill.status}
+                  Status: {bill.latestAction?.text || 'No status available'}
                 </Text>
               </VStack>
             </CardBody>

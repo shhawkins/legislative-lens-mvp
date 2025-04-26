@@ -1,45 +1,51 @@
 import { BaseEntity, WithTimestamps, Party, Chamber } from './common';
 
+export type CommitteeType = 'Standing' | 'Select' | 'Joint' | 'Subcommittee' | 'Task Force';
+
 export interface CommitteeMember {
   id: string;
+  role?: string;
   name: string;
-  party: Party;
   state: string;
-  title?: string;
+  party: 'D' | 'R' | 'I';
 }
 
 export interface Subcommittee {
-  id: string;
   name: string;
-  members: CommitteeMember[];
+  systemCode: string;
+  chair: string;
+  rankingMember: string;
 }
 
-export interface CommitteeMeeting {
+export interface Meeting {
   id: string;
-  date: string;
-  time: string;
   title: string;
+  date: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
   location: string;
   description: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
 }
 
-export interface CommitteeReport {
-  id: string;
-  title: string;
+export interface Activity {
   date: string;
-  reportNumber: string;
-  url: string;
+  type: 'hearing' | 'markup' | 'legislation' | 'other';
+  description: string;
 }
 
-export interface Committee extends BaseEntity, WithTimestamps {
-  name: string;
-  chamber: Chamber;
+export interface Committee {
   congress: number;
-  subcommittees: Subcommittee[];
+  chamber: Chamber;
+  committeeId: string;
+  systemCode: string;
+  name: string;
+  type: CommitteeType;
+  description: string;
+  url: string;
+  jurisdiction: string[];
   members: CommitteeMember[];
-  meetings?: CommitteeMeeting[];
-  reports?: CommitteeReport[];
+  meetings: Meeting[];
+  recentActivity: Activity[];
+  subcommittees: Subcommittee[];
 }
 
 export interface CommitteeSearchParams {

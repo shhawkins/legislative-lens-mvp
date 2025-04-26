@@ -1,109 +1,145 @@
 [
   {
-    "congress": 118,
-    "chamber": "house",
-    "committeeId": "HSWM",
-    "name": "Committee on Ways and Means",
-    "url": "https://waysandmeans.house.gov",
-    "chair": "S001184",
-    "rankingMember": "J000293",
-    "subcommittees": [
+    "committeeId": "HSAP",
+    "name": "House Committee on Appropriations",
+    "chamber": "House",
+    "type": "Standing",
+    "url": "https://appropriations.house.gov/",
+    "jurisdiction": [
+      "Defense spending",
+      "Military construction",
+      "Veterans affairs",
+      "Homeland security",
+      "Foreign operations"
+    ],
+    "leadership": [
       {
-        "subcommitteeId": "HSWM01",
-        "name": "Subcommittee on Health"
+        "role": "Chairman",
+        "memberId": "G000568",
+        "name": "H. Morgan Griffith"
       },
       {
-        "subcommitteeId": "HSWM02",
-        "name": "Subcommittee on Tax"
+        "role": "Ranking Member",
+        "memberId": "T000468",
+        "name": "Dina Titus"
       }
     ],
-    "image": "https://placehold.co/100x100?text=Committee"
-  },
-  {
-    "congress": 118,
-    "chamber": "senate",
-    "committeeId": "SSHR",
-    "name": "Committee on Health, Education, Labor, and Pensions",
-    "url": "https://help.senate.gov",
-    "chair": "J000293",
-    "rankingMember": "S001184",
     "subcommittees": [
       {
-        "subcommitteeId": "SSHR01",
-        "name": "Subcommittee on Primary Health and Retirement Security"
+        "committeeId": "HSAP01",
+        "name": "Defense",
+        "chairman": "Mike Rogers"
       },
       {
-        "subcommitteeId": "SSHR02",
-        "name": "Subcommittee on Children and Families"
+        "committeeId": "HSAP02",
+        "name": "State and Foreign Operations",
+        "chairman": "Mario Diaz-Balart"
       }
     ],
-    "image": "https://placehold.co/100x100?text=Committee"
+    "meetings": [
+      {
+        "date": "2025-04-30T10:00:00Z",
+        "title": "FY2024 Defense Appropriations Markup",
+        "location": "2359 Rayburn",
+        "status": "scheduled",
+        "description": "Full committee markup of the FY2024 Defense Appropriations Bill"
+      },
+      {
+        "date": "2025-05-15T14:00:00Z",
+        "title": "Military Construction Budget Hearing",
+        "location": "2359 Rayburn",
+        "status": "scheduled",
+        "description": "Testimony from the Secretary of Defense on military construction priorities"
+      }
+    ],
+    "recentActivity": [
+      {
+        "date": "2025-04-24",
+        "type": "hearing",
+        "title": "Defense Budget Overview",
+        "description": "Secretary of Defense testimony on FY2024 budget request",
+        "outcome": "Completed"
+      },
+      {
+        "date": "2025-04-22",
+        "type": "markup",
+        "title": "Veterans Affairs Appropriations",
+        "description": "Committee passage of VA funding bill",
+        "outcome": "Passed 32-24"
+      }
+    ],
+    "memberAssignments": [
+      {
+        "memberId": "G000568",
+        "role": "Chairman",
+        "rank": 1,
+        "party": "R"
+      },
+      {
+        "memberId": "T000468",
+        "role": "Ranking Member",
+        "rank": 2,
+        "party": "D"
+      }
+    ]
   },
   {
-    "congress": 118,
-    "chamber": "house",
     "committeeId": "HSIF",
-    "name": "Committee on Energy and Commerce",
-    "url": "https://energycommerce.house.gov",
-    "chair": "G000587",
-    "rankingMember": "M000789",
-    "subcommittees": [
+    "name": "House Committee on Energy and Commerce",
+    "chamber": "House",
+    "type": "Standing",
+    "url": "https://energycommerce.house.gov/",
+    "jurisdiction": [
+      "Energy policy",
+      "Healthcare",
+      "Communications",
+      "Consumer protection",
+      "Environmental regulation"
+    ],
+    "leadership": [
       {
-        "subcommitteeId": "HSIF01",
-        "name": "Subcommittee on Energy"
-      },
-      {
-        "subcommitteeId": "HSIF02",
-        "name": "Subcommittee on Health"
+        "role": "Chairwoman",
+        "memberId": "R000603",
+        "name": "Cathy McMorris Rodgers"
       }
     ],
-    "image": "https://placehold.co/100x100?text=Committee"
-  },
-  {
-    "congress": 118,
-    "chamber": "senate",
-    "committeeId": "SSFN",
-    "name": "Committee on Finance",
-    "url": "https://finance.senate.gov",
-    "chair": "R000123",
-    "rankingMember": "J000293",
     "subcommittees": [
       {
-        "subcommitteeId": "SSFN01",
-        "name": "Subcommittee on Taxation and IRS Oversight"
+        "committeeId": "HSIF01",
+        "name": "Health",
+        "chairman": "Brett Guthrie"
       },
       {
-        "subcommitteeId": "SSFN02",
-        "name": "Subcommittee on Health Care"
+        "committeeId": "HSIF02",
+        "name": "Energy",
+        "chairman": "Jeff Duncan"
       }
     ],
-    "image": "https://placehold.co/100x100?text=Committee"
-  },
-  {
-    "congress": 118,
-    "chamber": "house",
-    "committeeId": "HSVA",
-    "name": "Committee on Veterans' Affairs",
-    "url": "https://veterans.house.gov",
-    "chair": "M000789",
-    "rankingMember": "G000587",
-    "subcommittees": [
+    "meetings": [
       {
-        "subcommitteeId": "HSVA01",
-        "name": "Subcommittee on Health"
-      },
-      {
-        "subcommitteeId": "HSVA02",
-        "name": "Subcommittee on Economic Opportunity"
+        "date": "2025-05-02T10:00:00Z",
+        "title": "Clean Energy Innovation Hearing",
+        "location": "2123 Rayburn",
+        "status": "scheduled",
+        "description": "Hearing on advancing clean energy technologies"
       }
     ],
-    "image": "https://placehold.co/100x100?text=Committee"
-  },
-  {
-    "committeeId": "",
-    "name": "",
-    "chamber": "",
-    "congress": 0,
-    "subcommittees": []
+    "recentActivity": [
+      {
+        "date": "2025-04-23",
+        "type": "markup",
+        "title": "Rural Broadband Protection Act",
+        "description": "Committee passage of H.R. 2399",
+        "outcome": "Passed 46-7"
+      }
+    ],
+    "memberAssignments": [
+      {
+        "memberId": "R000603",
+        "role": "Chairwoman",
+        "rank": 1,
+        "party": "R"
+      }
+    ]
   }
 ]

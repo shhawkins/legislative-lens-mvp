@@ -42,20 +42,103 @@ export interface BillVote {
   vote?: 'yes' | 'no';
 }
 
-export interface Bill extends BaseEntity, WithTimestamps {
+export interface Vote {
+  committee?: {
+    date: string;
+    committee: string;
+    result: string;
+    total: VoteCounts;
+  };
+  house?: {
+    total: VoteCounts;
+    byParty: PartyVotes;
+  };
+  senate?: {
+    total: VoteCounts;
+    byParty: PartyVotes;
+  };
+}
+
+interface VoteCounts {
+  yea: number;
+  nay: number;
+  present: number;
+  notVoting: number;
+}
+
+interface PartyVotes {
+  D: VoteCounts;
+  R: VoteCounts;
+}
+
+export interface Bill {
   congress: number;
-  number: string;
+  billType: string;
+  billNumber: string;
   title: string;
-  shortTitle?: string;
-  sponsor: string;
-  sponsors: string[];
-  status: BillStatus;
-  summary: string;
-  text: string;
-  committees: string[];
-  timeline: BillTimelineEvent[];
-  votes: BillVote[];
-  textVersions: BillTextVersion[];
+  displayTitle: string;
+  summary?: string;
+  introducedDate: string;
+  policyArea: {
+    name: string;
+  };
+  sponsor: {
+    bioguideId: string;
+    district: number;
+    firstName: string;
+    fullName: string;
+    isByRequest: string;
+    lastName: string;
+    party: string;
+    state: string;
+    url: string;
+  };
+  latestAction?: {
+    actionDate: string;
+    text: string;
+  };
+  committees: {
+    count: number;
+    items: Array<{
+      activities: Array<{
+        date: string;
+        name: string;
+      }>;
+      chamber: string;
+      name: string;
+      systemCode: string;
+      type: string;
+      url: string;
+    }>;
+  };
+  textVersions: {
+    count: number;
+    url: string;
+  };
+  votes: Vote;
+  timeline: {
+    milestones: Array<{
+      date: string | null;
+      title: string;
+      description: string;
+      status: 'complete' | 'pending' | 'failed';
+      details?: {
+        location?: string;
+        actionBy?: string;
+        committee?: string;
+        outcome?: string;
+        calendarNumber?: number;
+        reportNumber?: string;
+      };
+    }>;
+  };
+  status: {
+    current: string;
+    stage: string;
+    isActive: boolean;
+    lastUpdated: string;
+    nextAction?: string;
+  };
 }
 
 export interface BillSearchParams {
