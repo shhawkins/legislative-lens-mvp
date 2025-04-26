@@ -55,4 +55,7 @@ logs
 *.tgz
 
 # Yarn Integrity file
-.yarn-integrity 
+.yarn-integrity
+
+# Cursor rules
+.cursor/rules/ 
