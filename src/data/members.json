@@ -9,7 +9,14 @@
     "chamber": "house",
     "title": "Representative",
     "startDate": "2021-01-03",
-    "endDate": "2023-01-03"
+    "endDate": "2025-01-03",
+    "committees": [
+      "HSWM",
+      "HSIF"
+    ],
+    "leadership": "Ranking Member",
+    "website": "https://smith.house.gov",
+    "office": "2084 Rayburn House Office Building"
   },
   {
     "bioguideId": "J000293",
@@ -21,6 +28,67 @@
     "chamber": "senate",
     "title": "Senator",
     "startDate": "2019-01-03",
-    "endDate": "2025-01-03"
+    "endDate": "2025-01-03",
+    "committees": [
+      "SSHR",
+      "SSFN"
+    ],
+    "leadership": "Committee Chair",
+    "website": "https://johnson.senate.gov",
+    "office": "185 Dirksen Senate Office Building"
+  },
+  {
+    "bioguideId": "G000587",
+    "firstName": "Sarah",
+    "lastName": "Green",
+    "party": "D",
+    "state": "WA",
+    "district": "7",
+    "chamber": "house",
+    "title": "Representative",
+    "startDate": "2021-01-03",
+    "endDate": "2025-01-03",
+    "committees": [
+      "HSIF",
+      "HSST"
+    ],
+    "website": "https://green.house.gov",
+    "office": "1233 Longworth House Office Building"
+  },
+  {
+    "bioguideId": "R000123",
+    "firstName": "Robert",
+    "lastName": "Richards",
+    "party": "R",
+    "state": "OH",
+    "chamber": "senate",
+    "title": "Senator",
+    "startDate": "2019-01-03",
+    "endDate": "2025-01-03",
+    "committees": [
+      "SSFN",
+      "SSTR"
+    ],
+    "leadership": "Majority Whip",
+    "website": "https://richards.senate.gov",
+    "office": "522 Hart Senate Office Building"
+  },
+  {
+    "bioguideId": "M000789",
+    "firstName": "Maria",
+    "lastName": "Martinez",
+    "party": "D",
+    "state": "NM",
+    "district": "3",
+    "chamber": "house",
+    "title": "Representative",
+    "startDate": "2021-01-03",
+    "endDate": "2025-01-03",
+    "committees": [
+      "HSVA",
+      "HSAS"
+    ],
+    "website": "https://martinez.house.gov",
+    "office": "1419 Longworth House Office Building"
   }
 ]

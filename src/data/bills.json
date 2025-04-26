@@ -16,7 +16,9 @@
       "actionDate": "2023-02-15",
       "text": "Referred to the Committee on Ways and Means"
     },
-    "status": "REFERRED"
+    "status": "REFERRED",
+    "summary": "This bill provides tax relief for middle-class families through various measures including expanded child tax credits and increased standard deductions.",
+    "policyArea": "Taxation"
   },
   {
     "congress": 118,
@@ -35,6 +37,71 @@
       "actionDate": "2023-03-01",
       "text": "Read twice and referred to the Committee on Health, Education, Labor, and Pensions"
     },
-    "status": "REFERRED"
+    "status": "REFERRED",
+    "summary": "This bill aims to expand healthcare access in rural communities through increased funding for rural hospitals and telehealth initiatives.",
+    "policyArea": "Health"
+  },
+  {
+    "congress": 118,
+    "billNumber": 3,
+    "billType": "HR",
+    "title": "Clean Energy Innovation and Transition Act",
+    "sponsor": {
+      "bioguideId": "G000587",
+      "firstName": "Sarah",
+      "lastName": "Green",
+      "party": "D",
+      "state": "WA"
+    },
+    "introducedDate": "2023-01-10",
+    "latestAction": {
+      "actionDate": "2023-04-15",
+      "text": "Passed House, received in Senate"
+    },
+    "status": "PASS_OVER:HOUSE",
+    "summary": "Comprehensive legislation to accelerate the transition to clean energy through investment in renewable technologies and grid modernization.",
+    "policyArea": "Energy and Environment"
+  },
+  {
+    "congress": 118,
+    "billNumber": 4,
+    "billType": "S",
+    "title": "Cybersecurity Infrastructure Protection Act",
+    "sponsor": {
+      "bioguideId": "R000123",
+      "firstName": "Robert",
+      "lastName": "Richards",
+      "party": "R",
+      "state": "OH"
+    },
+    "introducedDate": "2023-02-01",
+    "latestAction": {
+      "actionDate": "2023-05-01",
+      "text": "Passed Senate with amendments"
+    },
+    "status": "PASS_OVER:SENATE",
+    "summary": "Establishes new cybersecurity requirements for critical infrastructure and provides funding for state and local government security improvements.",
+    "policyArea": "Technology and Communications"
+  },
+  {
+    "congress": 118,
+    "billNumber": 5,
+    "billType": "HR",
+    "title": "Veterans Mental Health Support Act",
+    "sponsor": {
+      "bioguideId": "M000789",
+      "firstName": "Maria",
+      "lastName": "Martinez",
+      "party": "D",
+      "state": "NM"
+    },
+    "introducedDate": "2023-02-15",
+    "latestAction": {
+      "actionDate": "2023-06-01",
+      "text": "Signed by the President. Became Public Law No: 118-23."
+    },
+    "status": "ENACTED:SIGNED",
+    "summary": "Expands mental health services for veterans and provides additional funding for VA mental health facilities and programs.",
+    "policyArea": "Armed Forces and National Security"
   }
 ]

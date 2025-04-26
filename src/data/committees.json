@@ -4,10 +4,17 @@
     "chamber": "house",
     "committeeId": "HSWM",
     "name": "Committee on Ways and Means",
+    "url": "https://waysandmeans.house.gov",
+    "chair": "S001184",
+    "rankingMember": "J000293",
     "subcommittees": [
       {
         "subcommitteeId": "HSWM01",
         "name": "Subcommittee on Health"
+      },
+      {
+        "subcommitteeId": "HSWM02",
+        "name": "Subcommittee on Tax"
       }
     ]
   },
@@ -16,10 +23,74 @@
     "chamber": "senate",
     "committeeId": "SSHR",
     "name": "Committee on Health, Education, Labor, and Pensions",
+    "url": "https://help.senate.gov",
+    "chair": "J000293",
+    "rankingMember": "S001184",
     "subcommittees": [
       {
         "subcommitteeId": "SSHR01",
         "name": "Subcommittee on Primary Health and Retirement Security"
+      },
+      {
+        "subcommitteeId": "SSHR02",
+        "name": "Subcommittee on Children and Families"
+      }
+    ]
+  },
+  {
+    "congress": 118,
+    "chamber": "house",
+    "committeeId": "HSIF",
+    "name": "Committee on Energy and Commerce",
+    "url": "https://energycommerce.house.gov",
+    "chair": "G000587",
+    "rankingMember": "M000789",
+    "subcommittees": [
+      {
+        "subcommitteeId": "HSIF01",
+        "name": "Subcommittee on Energy"
+      },
+      {
+        "subcommitteeId": "HSIF02",
+        "name": "Subcommittee on Health"
+      }
+    ]
+  },
+  {
+    "congress": 118,
+    "chamber": "senate",
+    "committeeId": "SSFN",
+    "name": "Committee on Finance",
+    "url": "https://finance.senate.gov",
+    "chair": "R000123",
+    "rankingMember": "J000293",
+    "subcommittees": [
+      {
+        "subcommitteeId": "SSFN01",
+        "name": "Subcommittee on Taxation and IRS Oversight"
+      },
+      {
+        "subcommitteeId": "SSFN02",
+        "name": "Subcommittee on Health Care"
+      }
+    ]
+  },
+  {
+    "congress": 118,
+    "chamber": "house",
+    "committeeId": "HSVA",
+    "name": "Committee on Veterans' Affairs",
+    "url": "https://veterans.house.gov",
+    "chair": "M000789",
+    "rankingMember": "G000587",
+    "subcommittees": [
+      {
+        "subcommitteeId": "HSVA01",
+        "name": "Subcommittee on Health"
+      },
+      {
+        "subcommitteeId": "HSVA02",
+        "name": "Subcommittee on Economic Opportunity"
       }
     ]
   }
