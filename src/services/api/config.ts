@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  BASE_URL: 'https://corsproxy.io/?https://api.congress.gov/v3',
+  BASE_URL: 'https://cors.sh/https://api.congress.gov/v3',
   ENDPOINTS: {
     BILL: '/bill/{congress}/{type}/{number}',
     MEMBER: '/member/{bioguideId}',
@@ -7,7 +7,8 @@ export const API_CONFIG = {
   },
   DEFAULT_HEADERS: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
   }
 } as const;
 

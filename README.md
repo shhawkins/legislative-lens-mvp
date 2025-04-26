@@ -38,6 +38,7 @@ A React application for exploring and analyzing legislative data from Congress.g
    - Select "Environment Variables"
    - Add `REACT_APP_CONGRESS_API_KEY` with your API key
 5. The app should start automatically
+6. If you see CORS errors, make sure you're using the latest version of the code as it includes CORS proxy configuration
 
 ## API Key
 
