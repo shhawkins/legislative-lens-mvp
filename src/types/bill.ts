@@ -10,6 +10,24 @@ export interface BillTextVersion {
   text?: string;
 }
 
+export interface TimelineEvent {
+  date: string;
+  title: string;
+  text: string;
+  description?: string;
+  type?: string;
+  status: 'complete' | 'pending' | 'upcoming';
+  details?: {
+    location?: string;
+    actionBy?: string;
+    committee?: string;
+    outcome?: string;
+    calendarNumber?: number;
+    reportNumber?: string;
+    type?: string;
+  };
+}
+
 export interface BillTimelineEvent {
   id?: string;
   date: string;
@@ -117,20 +135,7 @@ export interface Bill {
   };
   votes: Vote;
   timeline: {
-    milestones: Array<{
-      date: string | null;
-      title: string;
-      description: string;
-      status: 'complete' | 'pending' | 'failed';
-      details?: {
-        location?: string;
-        actionBy?: string;
-        committee?: string;
-        outcome?: string;
-        calendarNumber?: number;
-        reportNumber?: string;
-      };
-    }>;
+    milestones: TimelineEvent[];
   };
   status: {
     current: string;

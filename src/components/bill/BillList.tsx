@@ -13,9 +13,14 @@ import {
   Text,
   VStack,
   useDisclosure,
+  useToast,
+  IconButton,
 } from '@chakra-ui/react';
+import { StarIcon } from '@chakra-ui/icons';
 import { staticDataService } from '../../services/staticDataService';
 import BillSummary from './BillSummary';
+import BillCard from './BillCard';
+import { Bill } from '../../types/bill';
 
 /**
  * BillList component displays a list of all bills using static data.
@@ -29,6 +34,7 @@ import BillSummary from './BillSummary';
  */
 const BillList: React.FC = () => {
   const [bills, setBills] = useState<any[]>([]);
+  const [pinnedBills, setPinnedBills] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
@@ -36,6 +42,7 @@ const BillList: React.FC = () => {
   const [filterCongress, setFilterCongress] = useState<string>('118');
   const [filterType, setFilterType] = useState<string>('all');
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
 
   useEffect(() => {
     const fetchBills = () => {
@@ -57,6 +64,23 @@ const BillList: React.FC = () => {
   const handleBillClick = (billId: string) => {
     setSelectedBillId(billId);
     onOpen();
+  };
+
+  const handleTogglePin = (bill: Bill) => {
+    const billId = `${bill.congress}-${bill.billType.toLowerCase()}-${bill.billNumber}`;
+    setPinnedBills(current => {
+      const isPinned = current.includes(billId);
+      if (isPinned) {
+        return current.filter(id => id !== billId);
+      } else {
+        return [...current, billId];
+      }
+    });
+  };
+
+  const isBillPinned = (bill: any) => {
+    const billId = `${bill.congress}-${bill.billType.toLowerCase()}-${bill.billNumber}`;
+    return pinnedBills.includes(billId);
   };
 
   const filteredBills = bills.filter(bill => {
@@ -114,30 +138,13 @@ const BillList: React.FC = () => {
       {/* Bill List */}
       <Grid templateColumns="repeat(auto-fill, minmax(300px, 1fr))" gap={6}>
         {filteredBills.map((bill) => (
-          <Card
+          <BillCard
             key={`${bill.congress}-${bill.billType.toLowerCase()}-${bill.billNumber}`}
-            cursor="pointer"
-            onClick={() => handleBillClick(`${bill.congress}-${bill.billType.toLowerCase()}-${bill.billNumber}`)}
-            _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
-            transition="all 0.2s"
-          >
-            <CardBody>
-              <VStack align="stretch" spacing={3}>
-                <Heading size="sm" mb={2}>
-                  {bill.billType}. {bill.billNumber} - {bill.title}
-                </Heading>
-                <Text fontSize="sm" color="gray.600" noOfLines={2}>
-                  {bill.summary || 'No summary available'}
-                </Text>
-                <Text fontSize="xs" color="gray.500">
-                  Introduced: {new Date(bill.introducedDate).toLocaleDateString()}
-                </Text>
-                <Text fontSize="xs" color="gray.500">
-                  Status: {bill.latestAction?.text || 'No status available'}
-                </Text>
-              </VStack>
-            </CardBody>
-          </Card>
+            bill={bill}
+            isPinned={isBillPinned(bill)}
+            onTogglePin={handleTogglePin}
+            onViewDetails={() => handleBillClick(`${bill.congress}-${bill.billType.toLowerCase()}-${bill.billNumber}`)}
+          />
         ))}
       </Grid>
 
@@ -147,6 +154,19 @@ const BillList: React.FC = () => {
           billId={selectedBillId}
           isOpen={isOpen}
           onClose={onClose}
+          isPinned={selectedBillId ? pinnedBills.includes(selectedBillId) : false}
+          onTogglePin={() => {
+            if (selectedBillId) {
+              setPinnedBills(current => {
+                const isPinned = current.includes(selectedBillId);
+                if (isPinned) {
+                  return current.filter(id => id !== selectedBillId);
+                } else {
+                  return [...current, selectedBillId];
+                }
+              });
+            }
+          }}
         />
       )}
     </VStack>

@@ -26,6 +26,7 @@ import {
   Spinner,
   Button,
   useDisclosure,
+  HStack,
 } from '@chakra-ui/react';
 import { ExternalLinkIcon, InfoIcon } from '@chakra-ui/icons';
 import { Member, convertApiMember } from '../../types/member';
@@ -147,13 +148,13 @@ interface StateMembersModalProps {
 const MemberCard: React.FC<{ member: Member; showDistrict?: boolean; onViewProfile?: () => void; onSelect?: (member: Member) => void }> = ({ 
   member, 
   showDistrict = false,
-  onViewProfile,
   onSelect
 }) => {
   const cardBg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const partyColor = member.party === 'D' ? 'blue.500' : member.party === 'R' ? 'red.500' : 'purple.500';
-  const age = member.dateOfBirth ? new Date().getFullYear() - parseInt(member.dateOfBirth.slice(0, 4)) : undefined;
+  const partyColor = member.party === 'D' ? 'blue' : member.party === 'R' ? 'red' : 'purple';
+  const chamberColor = 'purple';
+  const age = member.birthYear ? new Date().getFullYear() - parseInt(member.birthYear.slice(0, 4)) : undefined;
 
   return (
     <Card 
@@ -171,39 +172,21 @@ const MemberCard: React.FC<{ member: Member; showDistrict?: boolean; onViewProfi
               <Heading size="md">
                 {member.firstName} {member.lastName}
               </Heading>
+              <HStack spacing={2} mt={1} mb={1}>
+                <Badge colorScheme={partyColor}>
+                  {member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent'}
+                </Badge>
+                <Badge colorScheme={chamberColor}>
+                  {member.chamber === 'senate' ? 'Senate' : 'House'}
+                </Badge>
+              </HStack>
+              <Text fontSize="sm" color="gray.500">
+                {member.state}{showDistrict && member.district && `-${member.district}`}
+              </Text>
               {age && (
                 <Text fontSize="sm" color="gray.600">Age: {age}</Text>
               )}
-              <Text fontSize="sm" color="gray.500">
-                {member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent'}
-              </Text>
-              {showDistrict && member.district && (
-                <Text fontSize="sm" color="gray.600">
-                  District {member.district}
-                </Text>
-              )}
             </VStack>
-            <Flex align="center" gap={2}>
-              <Badge 
-                colorScheme={member.party === 'D' ? 'blue' : member.party === 'R' ? 'red' : 'purple'}
-                fontSize="md"
-                px={3}
-                py={1}
-              >
-                {member.party}
-              </Badge>
-              {/* IconButton for expanding profile */}
-              {onViewProfile && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  colorScheme="blue"
-                  onClick={e => { e.stopPropagation(); onViewProfile(); }}
-                  aria-label="View Full Profile"
-                  leftIcon={<InfoIcon />}
-                />
-              )}
-            </Flex>
           </Flex>
 
           <Flex gap={2} wrap="wrap">
@@ -231,8 +214,8 @@ const MemberCard: React.FC<{ member: Member; showDistrict?: boolean; onViewProfi
           )}
 
           <Flex justify="space-between" align="center">
-            <Link href={`https://www.congress.gov/member/${member.bioguideId}`} isExternal>
-              <Button size="sm" variant="ghost" colorScheme="blue" leftIcon={<ExternalLinkIcon />}>
+            <Link href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}`} isExternal>
+              <Button size="sm" variant="ghost" colorScheme="blue" leftIcon={<ExternalLinkIcon />} mt={2}>
                 View on Congress.gov
               </Button>
             </Link>
@@ -245,6 +228,8 @@ const MemberCard: React.FC<{ member: Member; showDistrict?: boolean; onViewProfi
                 h="60px"
                 borderRadius="full"
                 objectFit="cover"
+                borderWidth="3px"
+                borderColor={`${partyColor}.500`}
               />
             )}
           </Flex>
@@ -255,6 +240,7 @@ const MemberCard: React.FC<{ member: Member; showDistrict?: boolean; onViewProfi
 };
 
 const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, stateCode, stateName, onSelectMember }) => {
+  console.log("StateMembersModal rendering with: ", { stateCode, stateName });
   const [activeTab, setActiveTab] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -297,9 +283,9 @@ const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, 
       <ModalOverlay />
       <ModalContent maxW="75vw" margin="auto">
         <ModalHeader>
-          <Heading size="lg">Congressional Delegation: {stateName}</Heading>
+          <Heading size="lg">Congressional Delegation: {stateCode}</Heading>
           <Text fontSize="md" color="gray.600" mt={2}>
-            Senators and Representatives currently serving {stateName}
+            Senators and Representatives currently serving {stateCode}
           </Text>
         </ModalHeader>
         <ModalCloseButton />

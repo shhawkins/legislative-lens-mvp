@@ -118,7 +118,8 @@ const mockBill: Bill = {
       {
         date: '2024-03-01',
         title: 'Introduced in House',
-        description: 'Bill introduced by Rep. McMorris Rodgers',
+        text: 'Bill introduced by Rep. McMorris Rodgers',
+        type: 'introduction',
         status: 'complete',
         details: {
           location: 'House Floor',
@@ -128,7 +129,8 @@ const mockBill: Bill = {
       {
         date: '2024-03-15',
         title: 'Referred to Committee',
-        description: 'Referred to House Committee on Energy and Commerce',
+        text: 'Referred to House Committee on Energy and Commerce',
+        type: 'committee',
         status: 'complete',
         details: {
           committee: 'HSIF',
@@ -137,54 +139,16 @@ const mockBill: Bill = {
       }
     ]
   },
-  votes: {
-    committee: {
-      date: '2024-03-20',
-      committee: 'HSIF',
-      result: 'REPORTED',
-      total: {
-        yea: 32,
-        nay: 24,
-        present: 0,
-        notVoting: 2
-      }
-    },
-    house: {
-      total: {
-        yea: 220,
-        nay: 210,
-        present: 2,
-        notVoting: 3
-      },
-      byParty: {
-        D: {
-          yea: 200,
-          nay: 10,
-          present: 1,
-          notVoting: 1
-        },
-        R: {
-          yea: 20,
-          nay: 200,
-          present: 1,
-          notVoting: 2
-        }
-      }
-    }
-  },
   textVersions: {
     count: 1,
     url: 'https://www.congress.gov/bill/118th-congress/house-bill/1234/text'
   },
-  latestAction: {
-    actionDate: '2024-03-20',
-    text: 'Passed House vote'
-  },
+  votes: {},
   status: {
-    current: 'IN_HOUSE',
-    stage: 'PASSED',
+    current: 'Referred to House Committee on Energy and Commerce',
+    stage: 'Committee Consideration',
     isActive: true,
-    lastUpdated: '2024-03-20'
+    lastUpdated: '2024-03-15'
   }
 };
 
@@ -331,46 +295,6 @@ const stateList = [
   { code: 'WI', name: 'Wisconsin' },
   { code: 'WY', name: 'Wyoming' }
 ];
-
-// Add this after the stateList constant
-const mockZipToReps = {
-  '90210': {
-    state: 'CA',
-    senators: [
-      {
-        id: 'S001',
-        name: 'Sen. Alex Smith',
-        state: 'CA',
-        party: 'D',
-        photoUrl: 'https://via.placeholder.com/150',
-        committees: ['Judiciary', 'Finance'],
-        contactInfo: 'alex.smith@senate.gov',
-        reelectionDate: '2024-11-05'
-      },
-      {
-        id: 'S002',
-        name: 'Sen. Maria Garcia',
-        state: 'CA',
-        party: 'D',
-        photoUrl: 'https://via.placeholder.com/150',
-        committees: ['Energy', 'Foreign Relations'],
-        contactInfo: 'maria.garcia@senate.gov',
-        reelectionDate: '2026-11-05'
-      }
-    ],
-    representative: {
-      id: 'R001',
-      name: 'Rep. John Doe',
-      state: 'CA',
-      district: '12',
-      party: 'D',
-      photoUrl: 'https://via.placeholder.com/150',
-      committees: ['Energy and Commerce'],
-      contactInfo: 'john.doe@house.gov',
-      reelectionDate: '2024-11-05'
-    }
-  }
-};
 
 // Custom Hook for Responsive Layout
 const useResponsiveLayout = () => {
@@ -747,13 +671,29 @@ const useMemberPhoto = (bioguideId: string) => {
 };
 
 // Update the MemberCard component to use the new photo handling
-const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
-  // Prefer depiction.imageUrl, then fallback to getMemberPhotoUrl
-  const fallbackPhotoUrl = getMemberPhotoUrl(member.bioguideId);
+const MemberCard: React.FC<{ member: Member; onRandom?: () => void }> = ({ member, onRandom }) => {
+  // Use dummy data for all fields
+  const fallbackPhotoUrl = 'https://bioguide.congress.gov/bioguide/photo/H/H001098.jpg';
   const photoUrl = member.depiction?.imageUrl || member.photoUrl || fallbackPhotoUrl;
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isCommitteeOpen, onOpen: onCommitteeOpen, onClose: onCommitteeClose } = useDisclosure();
   const [selectedCommittee, setSelectedCommittee] = useState<Committee | null>(null);
+
+  // Dummy data
+  const dummyCommittees = ["Judiciary", "Finance", "Energy and Commerce"];
+  const dummyContact = "rep.email@congress.gov";
+  const dummyNextElection = "2026-11-03";
+  const dummyVotes = [
+    { billId: 'HR123', vote: 'yes' },
+    { billId: 'S456', vote: 'no' },
+    { billId: 'HR789', vote: 'present' }
+  ];
+  const dummySponsored = 280;
+  const dummyCosponsored = 855;
+  const birthYear = member.birthYear || 'N/A';
+  const partyLabel = member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent';
+  const partyColor = member.party === 'D' ? 'blue' : member.party === 'R' ? 'red' : 'gray';
+  const chamberLabel = member.chamber ? member.chamber.charAt(0).toUpperCase() + member.chamber.slice(1) : 'N/A';
 
   const handleCommitteeClick = (committeeName: string) => {
     setSelectedCommittee(mockCommittee);
@@ -762,8 +702,8 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
 
   return (
     <Card variant="elevated" w="100%">
-      <CardHeader>
-        <Flex direction={{ base: 'column', md: 'row' }} gap={4}>
+      <CardHeader position="relative">
+        <Flex direction={{ base: 'column', md: 'row' }} gap={4} align="flex-start">
           <Box
             as="img"
             src={photoUrl}
@@ -773,20 +713,36 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
             borderRadius="full"
             objectFit="cover"
             border="3px solid"
-            borderColor={member.party === 'D' ? 'blue.500' : 'red.500'}
+            borderColor={partyColor + '.500'}
           />
-          <Box>
-            <Heading size="lg">{member.fullName || `${member.firstName} ${member.lastName}`}</Heading>
-            <Text fontSize="lg" color="gray.600">
-              {member.state}{member.district ? `-${member.district}` : ''}
+          <Box flex={1} position="relative">
+            {onRandom && (
+              <IconButton
+                icon={<RepeatIcon/>}
+                aria-label="Load random member"
+                size="sm"
+                variant="ghost"
+                position="absolute"
+                top={0}
+                right={0}
+                onClick={onRandom}
+                zIndex={1}
+              />
+            )}
+            <Heading size="lg" pr="40px">{member.fullName || `${member.firstName} ${member.lastName}`}</Heading>
+            <Text fontSize="sm" color="gray.500" mt={1}>
+              {member.state}{member.district ? `-${member.district}` : ''} • {partyLabel} • {chamberLabel}
             </Text>
-            <Text
-              fontSize="md"
-              color={member.party === 'D' ? 'blue.500' : 'red.500'}
-              fontWeight="bold"
-            >
-              {member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent'}
-            </Text>
+            <HStack spacing={2}>
+              <Badge colorScheme={partyColor}>{partyLabel}</Badge>
+              <Badge colorScheme="purple">{chamberLabel}</Badge>
+            </HStack>
+            <Text fontSize="sm" color="gray.500">Born: {birthYear}</Text>
+            <Link href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}`} isExternal>
+              <Button size="sm" variant="ghost" colorScheme="blue" leftIcon={<ExternalLinkIcon />} mt={2}>
+                View on Congress.gov
+              </Button>
+            </Link>
           </Box>
         </Flex>
       </CardHeader>
@@ -796,56 +752,69 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
           <Box>
             <Heading size="sm" mb={3}>Committee Assignments</Heading>
             <Flex direction="column" gap={2}>
-              {member.committees && member.committees.length > 0 ? (
-                member.committees.map((committee, index) => (
-                  <Box
-                    key={index}
-                    onClick={() => handleCommitteeClick(committee)}
-                    cursor="pointer"
-                    color="blue.500"
-                    _hover={{ textDecoration: 'underline' }}
-                  >
-                    • {committee}
-                  </Box>
-                ))
-              ) : (
-                <Text color="gray.400">Not available</Text>
-              )}
+              {dummyCommittees.map((committee, index) => (
+                <Box
+                  key={index}
+                  onClick={() => handleCommitteeClick(committee)}
+                  cursor="pointer"
+                  color="blue.500"
+                  _hover={{ textDecoration: 'underline' }}
+                >
+                  • {committee}
+                </Box>
+              ))}
             </Flex>
             <Heading size="sm" mt={6} mb={3}>Contact Information</Heading>
-            <Text fontSize="sm">{member.contactInfo || <span style={{color:'#888'}}>Not available</span>}</Text>
+            <Text fontSize="sm">{dummyContact}</Text>
+            <Box mt={6}>
+              <Heading size="sm" mb={2}>Legislation</Heading>
+              <Text fontSize="sm">
+                Sponsored: {dummySponsored}
+                <Link 
+                  href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D`} 
+                  isExternal 
+                  color="blue.500" 
+                  ml={2}
+                >
+                  View
+                </Link>
+              </Text>
+              <Text fontSize="sm">
+                Co-sponsored: {dummyCosponsored}
+                <Link 
+                  href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22cosponsored%22%7D`} 
+                  isExternal 
+                  color="blue.500" 
+                  ml={2}
+                >
+                  View
+                </Link>
+              </Text>
+            </Box>
           </Box>
           {/* Right Column */}
           <Box>
             <Heading size="sm" mb={3}>Recent Voting Record</Heading>
             <Flex direction="column" gap={2}>
-              {member.votingRecord && member.votingRecord.length > 0 ? (
-                member.votingRecord.map((record, index) => (
-                  <Flex key={index} justify="space-between" align="center">
-                    <Text fontSize="sm" isTruncated>Bill {record.billId}</Text>
-                    <Box
-                      bg={record.vote === 'yes' ? 'green.100' : 'red.100'}
-                      color={record.vote === 'yes' ? 'green.700' : 'red.700'}
-                      px={2}
-                      py={1}
-                      borderRadius="md"
-                      fontSize="sm"
-                    >
-                      {record.vote.toUpperCase()}
-                    </Box>
-                  </Flex>
-                ))
-              ) : (
-                <Text color="gray.400">Not available</Text>
-              )}
+              {dummyVotes.map((record, index) => (
+                <Flex key={index} justify="space-between" align="center">
+                  <Text fontSize="sm" isTruncated>Bill {record.billId}</Text>
+                  <Box
+                    bg={record.vote === 'yes' ? 'green.100' : record.vote === 'no' ? 'red.100' : 'gray.100'}
+                    color={record.vote === 'yes' ? 'green.700' : record.vote === 'no' ? 'red.700' : 'gray.700'}
+                    px={2}
+                    py={1}
+                    borderRadius="md"
+                    fontSize="sm"
+                  >
+                    {record.vote.toUpperCase()}
+                  </Box>
+                </Flex>
+              ))}
             </Flex>
             <Box mt={6}>
               <Text fontSize="sm" color="gray.600">Next Election</Text>
-              {member.reelectionDate ? (
-                <Text fontSize="md" fontWeight="medium">{member.reelectionDate}</Text>
-              ) : (
-                <Text color="gray.400">Not available</Text>
-              )}
+              <Text fontSize="md" fontWeight="medium">{dummyNextElection}</Text>
             </Box>
           </Box>
         </Grid>
@@ -874,8 +843,13 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
           <ModalHeader>
             <Heading size="lg">{member.fullName || `${member.firstName} ${member.lastName}`}</Heading>
             <Text fontSize="sm" color="gray.500" mt={1}>
-              {member.state}{member.district ? `-${member.district}` : ''} • {member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent'}
+              {member.state}{member.district ? `-${member.district}` : ''} • {partyLabel}
             </Text>
+            <Link href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}`} isExternal>
+              <Button size="sm" variant="ghost" colorScheme="blue" leftIcon={<ExternalLinkIcon />} mt={2}>
+                View on Congress.gov
+              </Button>
+            </Link>
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
@@ -891,18 +865,40 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
                   borderRadius="lg"
                   objectFit="cover"
                   border="3px solid"
-                  borderColor={member.party === 'D' ? 'blue.500' : 'red.500'}
+                  borderColor={partyColor + '.500'}
                 />
                 <Box mt={4}>
                   <Heading size="sm" mb={2}>Contact Information</Heading>
-                  <Text fontSize="sm">{member.contactInfo || <span style={{color:'#888'}}>Not available</span>}</Text>
-                  {member.reelectionDate ? (
-                    <Text fontSize="sm" color="gray.500" mt={1}>
-                      Next Election: {new Date(member.reelectionDate).toLocaleDateString()}
+                  <Text fontSize="sm">{dummyContact}</Text>
+                  <Text fontSize="sm" color="gray.500" mt={1}>
+                    Next Election: {dummyNextElection}
+                  </Text>
+                  {/* Sponsored/Co-sponsored Legislation */}
+                  <Box mt={4}>
+                    <Heading size="sm" mb={2}>Legislation</Heading>
+                    <Text fontSize="sm">
+                      Sponsored: {dummySponsored}
+                      <Link 
+                        href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D`} 
+                        isExternal 
+                        color="blue.500" 
+                        ml={2}
+                      >
+                        View
+                      </Link>
                     </Text>
-                  ) : (
-                    <Text color="gray.400">Next Election: Not available</Text>
-                  )}
+                    <Text fontSize="sm">
+                      Co-sponsored: {dummyCosponsored}
+                      <Link 
+                        href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22cosponsored%22%7D`} 
+                        isExternal 
+                        color="blue.500" 
+                        ml={2}
+                      >
+                        View
+                      </Link>
+                    </Text>
+                  </Box>
                 </Box>
               </Box>
               {/* Right Column - Detailed Info */}
@@ -917,79 +913,81 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
                     {/* Committees Panel */}
                     <TabPanel>
                       <VStack spacing={4} align="stretch">
-                        {member.committees && member.committees.length > 0 ? (
-                          member.committees.map((committee, index) => (
-                            <Card key={index} variant="outline">
-                              <CardBody>
-                                <Flex justify="space-between" align="center">
-                                  <Text fontSize="md" fontWeight="medium">{committee}</Text>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    colorScheme="blue"
-                                    onClick={() => handleCommitteeClick(committee)}
-                                  >
-                                    View Committee
-                                  </Button>
-                                </Flex>
-                              </CardBody>
-                            </Card>
-                          ))
-                        ) : (
-                          <Text color="gray.400">Not available</Text>
-                        )}
+                        {dummyCommittees.map((committee, index) => (
+                          <Card key={index} variant="outline">
+                            <CardBody>
+                              <Flex justify="space-between" align="center">
+                                <Text fontSize="md" fontWeight="medium">{committee}</Text>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  colorScheme="blue"
+                                  onClick={() => handleCommitteeClick(committee)}
+                                >
+                                  View Committee
+                                </Button>
+                              </Flex>
+                            </CardBody>
+                          </Card>
+                        ))}
                       </VStack>
                     </TabPanel>
                     {/* Voting Record Panel */}
                     <TabPanel>
                       <VStack spacing={4} align="stretch">
-                        {member.votingRecord && member.votingRecord.length > 0 ? (
-                          member.votingRecord.map((record, index) => (
-                            <Card key={index} variant="outline">
-                              <CardBody>
-                                <Flex justify="space-between" align="center">
-                                  <Box>
-                                    <Text fontSize="md" fontWeight="medium">Bill {record.billId}</Text>
-                                    <Text fontSize="sm" color="gray.500">Vote: {record.vote.toUpperCase()}</Text>
-                                  </Box>
-                                  <Badge
-                                    colorScheme={record.vote === 'yes' ? 'green' : 'red'}
-                                    fontSize="sm"
-                                  >
-                                    {record.vote.toUpperCase()}
-                                  </Badge>
-                                </Flex>
-                              </CardBody>
-                            </Card>
-                          ))
-                        ) : (
-                          <Text color="gray.400">Not available</Text>
-                        )}
+                        {dummyVotes.map((record, index) => (
+                          <Card key={index} variant="outline">
+                            <CardBody>
+                              <Flex justify="space-between" align="center">
+                                <Box>
+                                  <Text fontSize="md" fontWeight="medium">Bill {record.billId}</Text>
+                                  <Text fontSize="sm" color="gray.500">Vote: {record.vote.toUpperCase()}</Text>
+                                </Box>
+                                <Badge
+                                  colorScheme={record.vote === 'yes' ? 'green' : record.vote === 'no' ? 'red' : 'gray'}
+                                  fontSize="sm"
+                                >
+                                  {record.vote.toUpperCase()}
+                                </Badge>
+                              </Flex>
+                            </CardBody>
+                          </Card>
+                        ))}
                       </VStack>
                     </TabPanel>
                     {/* Biography Panel */}
                     <TabPanel>
                       <Box>
-                        {member.depiction?.attribution && (
-                          <Text fontSize="sm" color="gray.500" mb={2}>
-                            Photo: {member.depiction.attribution}
-                          </Text>
-                        )}
-                        {member.depiction?.imageUrl && (
-                          <Box
-                            as="img"
-                            src={member.depiction.imageUrl}
-                            alt={`Official portrait of ${member.fullName}`}
-                            w="100%"
-                            maxW="400px"
-                            borderRadius="lg"
-                            mb={4}
-                          />
-                        )}
                         <Text fontSize="md">
                           {member.fullName} represents {member.state}{member.district ? `'s ${member.district}th district` : ''} in the {member.district ? 'House of Representatives' : 'Senate'}. 
-                          As a {member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent'}, they serve on the following committees: {member.committees && member.committees.length > 0 ? member.committees.join(', ') : 'Not available'}.
+                          As a {partyLabel}, they serve on the following committees: {dummyCommittees.join(', ')}.
                         </Text>
+                        {/* Sponsored/Co-sponsored Legislation */}
+                        <Box mt={4}>
+                          <Heading size="sm" mb={2}>Legislation</Heading>
+                          <Text fontSize="sm">
+                            Sponsored: {dummySponsored}
+                            <Link 
+                              href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D`} 
+                              isExternal 
+                              color="blue.500" 
+                              ml={2}
+                            >
+                              View
+                            </Link>
+                          </Text>
+                          <Text fontSize="sm">
+                            Co-sponsored: {dummyCosponsored}
+                            <Link 
+                              href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22cosponsored%22%7D`} 
+                              isExternal 
+                              color="blue.500" 
+                              ml={2}
+                            >
+                              View
+                            </Link>
+                          </Text>
+                        </Box>
                       </Box>
                     </TabPanel>
                   </TabPanels>
@@ -1003,118 +1001,15 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
   );
 };
 
-// Add this new component after the MemberCard component
-const ZipCodeSearchModal: React.FC<{ 
-  isOpen: boolean; 
-  onClose: () => void;
-  zipCode: string;
-}> = ({ isOpen, onClose, zipCode }) => {
-  const reps = mockZipToReps[zipCode as keyof typeof mockZipToReps];
-  
-  if (!reps) {
-    return (
-      <Modal isOpen={isOpen} onClose={onClose} size="md">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>No Representatives Found</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <Text>No representatives found for zip code {zipCode}. Please try another zip code.</Text>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    );
-  }
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} size="xl">
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>Your Representatives</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody pb={6}>
-          <VStack spacing={6} align="stretch">
-            {/* Senators Section */}
-            <Box>
-              <Heading size="md" mb={4}>U.S. Senators</Heading>
-              <Grid templateColumns="repeat(auto-fill, minmax(300px, 1fr))" gap={4}>
-                {reps.senators.map((senator) => (
-                  <Card key={senator.id} variant="outline">
-                    <CardBody>
-                      <Flex gap={4}>
-                        <Box
-                          as="img"
-                          src={senator.photoUrl}
-                          alt={senator.name}
-                          w="60px"
-                          h="60px"
-                          borderRadius="full"
-                          objectFit="cover"
-                        />
-                        <Box>
-                          <Heading size="sm">{senator.name}</Heading>
-                          <Text fontSize="sm" color={senator.party === 'D' ? 'blue.500' : 'red.500'}>
-                            {senator.party === 'D' ? 'Democrat' : 'Republican'}
-                          </Text>
-                          <Text fontSize="xs" color="gray.600">
-                            {senator.committees.join(', ')}
-                          </Text>
-                        </Box>
-                      </Flex>
-                    </CardBody>
-                  </Card>
-                ))}
-              </Grid>
-            </Box>
-
-            {/* Representative Section */}
-            <Box>
-              <Heading size="md" mb={4}>U.S. Representative</Heading>
-              <Card variant="outline">
-                <CardBody>
-                  <Flex gap={4}>
-                    <Box
-                      as="img"
-                      src={reps.representative.photoUrl}
-                      alt={reps.representative.name}
-                      w="60px"
-                      h="60px"
-                      borderRadius="full"
-                      objectFit="cover"
-                    />
-                    <Box>
-                      <Heading size="sm">{reps.representative.name}</Heading>
-                      <Text fontSize="sm" color={reps.representative.party === 'D' ? 'blue.500' : 'red.500'}>
-                        {reps.representative.party === 'D' ? 'Democrat' : 'Republican'}
-                      </Text>
-                      <Text fontSize="xs" color="gray.600">
-                        District {reps.representative.district}
-                      </Text>
-                      <Text fontSize="xs" color="gray.600">
-                        {reps.representative.committees.join(', ')}
-                      </Text>
-                    </Box>
-                  </Flex>
-                </CardBody>
-              </Card>
-            </Box>
-          </VStack>
-        </ModalBody>
-      </ModalContent>
-    </Modal>
-  );
-};
-
 // Default color scheme based on provided map
+const swingRedStates = ['Nevada', 'Arizona', 'Wisconsin', 'Michigan', 'Pennsylvania', 'Georgia'];
 const defaultStateColors: Record<string, string> = {
   // Solid blue
-  WA: '#3576b8', OR: '#3576b8', CA: '#3576b8', HI: '#3576b8', IL: '#3576b8', NY: '#3576b8', VT: '#3576b8', MA: '#3576b8', CT: '#3576b8', RI: '#3576b8', NJ: '#3576b8', DE: '#3576b8', MD: '#3576b8', ME: '#3576b8', DC: '#3576b8', CO: '#3576b8', NM: '#3576b8', MN: '#3576b8',
+  'Washington': '#3576b8', 'Oregon': '#3576b8', 'California': '#3576b8', 'Hawaii': '#3576b8', 'Illinois': '#3576b8', 'New York': '#3576b8', 'Vermont': '#3576b8', 'Massachusetts': '#3576b8', 'Connecticut': '#3576b8', 'Rhode Island': '#3576b8', 'New Jersey': '#3576b8', 'Delaware': '#3576b8', 'Maryland': '#3576b8', 'Maine': '#3576b8', 'District of Columbia': '#3576b8', 'Colorado': '#3576b8', 'New Mexico': '#3576b8', 'Minnesota': '#3576b8', 'Virginia': '#3576b8', 'New Hampshire': '#3576b8',
   // Solid red
-  ID: '#e05a4e', MT: '#e05a4e', WY: '#e05a4e', ND: '#e05a4e', SD: '#e05a4e', NE: '#e05a4e', KS: '#e05a4e', OK: '#e05a4e', TX: '#e05a4e', MO: '#e05a4e', AR: '#e05a4e', LA: '#e05a4e', MS: '#e05a4e', AL: '#e05a4e', TN: '#e05a4e', KY: '#e05a4e', IN: '#e05a4e', WV: '#e05a4e', SC: '#e05a4e',
-  // Swing states (light blue or light red)
-  WI: '#7db7e8', MI: '#7db7e8', PA: '#7db7e8', NV: '#f7b2a0', AZ: '#f7b2a0', GA: '#f7b2a0', NC: '#f7b2a0',
-  // Others (use red as default for AK, FL, IA, OH, NH)
-  AK: '#e05a4e', FL: '#e05a4e', IA: '#e05a4e', OH: '#e05a4e', NH: '#3576b8', // NH is blue in your map
+  'Idaho': '#e05a4e', 'Montana': '#e05a4e', 'Wyoming': '#e05a4e', 'North Dakota': '#e05a4e', 'South Dakota': '#e05a4e', 'Nebraska': '#e05a4e', 'Kansas': '#e05a4e', 'Oklahoma': '#e05a4e', 'Texas': '#e05a4e', 'Missouri': '#e05a4e', 'Arkansas': '#e05a4e', 'Louisiana': '#e05a4e', 'Mississippi': '#e05a4e', 'Alabama': '#e05a4e', 'Tennessee': '#e05a4e', 'Kentucky': '#e05a4e', 'Indiana': '#e05a4e', 'West Virginia': '#e05a4e', 'South Carolina': '#e05a4e', 'Alaska': '#e05a4e', 'Florida': '#e05a4e', 'Iowa': '#e05a4e', 'Ohio': '#e05a4e', 'North Carolina': '#e05a4e', 'Utah': '#e05a4e',
+  // Swing states (will be handled with pattern)
+  'Wisconsin': 'swing-red', 'Michigan': 'swing-red', 'Pennsylvania': 'swing-red', 'Nevada': 'swing-red', 'Arizona': 'swing-red', 'Georgia': 'swing-red',
 };
 
 // Update the EnhancedMap component
@@ -1122,13 +1017,11 @@ const EnhancedMap: React.FC<{
   bill: Bill | null;
   selectedState: string | null;
   onSelectState: (state: string) => void;
-  homeState?: string;
   setSelectedMember: (member: Member) => void;
-}> = ({ bill, selectedState, onSelectState, homeState, setSelectedMember }) => {
+  selectedMember: Member | null;
+}> = ({ bill, selectedState, onSelectState, setSelectedMember, selectedMember }) => {
   const [tooltipContent, setTooltipContent] = useState<string | null>(null);
   const { isOpen: isStateModalOpen, onOpen: onStateModalOpen, onClose: onStateModalClose } = useDisclosure();
-  const { isOpen: isZipModalOpen, onOpen: onZipModalOpen, onClose: onZipModalClose } = useDisclosure();
-  const [zipCode, setZipCode] = useState('');
   const [position, setPosition] = useState({ coordinates: [-97, 38], zoom: 1 });
 
   const handleMoveEnd = useCallback((position: any) => {
@@ -1139,93 +1032,63 @@ const EnhancedMap: React.FC<{
   const voteColors = useMemo(() => {
     const colors: Record<string, string> = {};
     stateList.forEach(state => {
-      const houseVotes = bill?.votes?.house as any;
-      if (houseVotes && houseVotes.byState && houseVotes.byState[state.code]) {
-        const stateVote = houseVotes.byState[state.code];
-        const totalVotes = (stateVote.yea || 0) + (stateVote.nay || 0);
-        if (totalVotes > 0) {
-          const yeaPct = stateVote.yea / totalVotes;
-          if (yeaPct > 0.5) {
-            const intensity = Math.min(1, (yeaPct - 0.5) / 0.5);
-            colors[state.code] = `rgba(0, 0, 255, ${intensity})`;
-          } else {
-            const intensity = Math.min(1, (0.5 - yeaPct) / 0.5);
-            colors[state.code] = `rgba(255, 0, 0, ${intensity})`;
-          }
-        } else {
-          colors[state.code] = '#D6D6DA';
-        }
+      if (swingRedStates.includes(state.name)) {
+        colors[state.name] = 'url(#swingRedPattern)';
       } else {
-        // Fallback: use defaultStateColors if available, else gray
-        colors[state.code] = defaultStateColors[state.code] || '#D6D6DA';
+        colors[state.name] = defaultStateColors[state.name] || '#D6D6DA';
       }
     });
     return colors;
   }, [bill]);
 
-  const handleStateClick = (stateCode: string) => {
-    if (!stateCode) {
-      console.warn('No state code provided');
+  const handleStateClick = (stateName: string) => {
+    if (!stateName) {
+      console.warn('No state name provided');
       return;
     }
-    const state = stateList.find(state => state.code === stateCode);
+    const state = stateList.find(state => state.name === stateName);
     if (!state) {
-      console.warn('Invalid state code:', stateCode);
+      console.warn('Invalid state name:', stateName);
       return;
     }
-    onSelectState(stateCode);
+    onSelectState(stateName);
     onStateModalOpen();
   };
 
   const handleStateSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const stateCode = event.target.value;
-    if (stateCode) {
-      onSelectState(stateCode);
+    const stateName = event.target.value;
+    if (stateName) {
+      onSelectState(stateName);
       onStateModalOpen();
-    }
-  };
-
-  const handleZipCodeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value.replace(/\D/g, '').slice(0, 5);
-    setZipCode(value);
-    if (value.length === 5) {
-      onZipModalOpen();
     }
   };
 
   return (
     <Box position="relative" width="100%" height="300px">
+      {/* SVG Pattern for swing red states */}
+      <svg width="0" height="0">
+        <defs>
+          <pattern id="swingRedPattern" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+            <rect width="8" height="8" fill="#e05a4e" />
+            <line x1="0" y1="0" x2="0" y2="8" stroke="#fff" strokeWidth="2" />
+          </pattern>
+        </defs>
+      </svg>
       {/* Search Controls */}
       <Box position="absolute" top={2} left={2} zIndex={1} bg="white" p={2} borderRadius="md" shadow="md">
-        <HStack spacing={2}>
-          <InputGroup size="sm" width="150px">
-            <Input
-              placeholder="Enter ZIP code"
-              value={zipCode}
-              onChange={handleZipCodeChange}
-              type="text"
-              pattern="[0-9]*"
-              inputMode="numeric"
-            />
-            <InputRightElement>
-              <SearchIcon color="gray.500" />
-            </InputRightElement>
-          </InputGroup>
-          <Text color="gray.500">or</Text>
-          <Select
-            placeholder="Select a state"
-            value={selectedState || ''}
-            onChange={handleStateSelect}
-            size="sm"
-            width="150px"
-          >
-            {stateList.map((state) => (
-              <option key={state.code} value={state.code}>
-                {state.name}
-              </option>
-            ))}
-          </Select>
-        </HStack>
+        <Select
+          placeholder="Select a state"
+          value={selectedState || ''}
+          onChange={handleStateSelect}
+          size="sm"
+          width="150px"
+        >
+          {stateList.map((state) => (
+            <option key={state.code} value={state.code}>
+              {state.name}
+            </option>
+          ))}
+        </Select>
       </Box>
 
       <ComposableMap
@@ -1240,18 +1103,18 @@ const EnhancedMap: React.FC<{
           <Geographies geography={geoUrl}>
             {({ geographies }) =>
               geographies.map(geo => {
-                const stateCode = geo.properties.postal;
-                const isSelected = selectedState === stateCode;
-                const isHome = homeState === stateCode;
-                const voteColor = voteColors[stateCode];
+                const stateName = geo.properties.name;
+                const isMemberState = selectedMember && selectedMember.state && stateList.find(s => s.name === stateName)?.code === selectedMember.state;
+                const voteColor = voteColors[stateName];
+                const isSelectedState = !selectedMember && selectedState === stateName;
 
                 return (
                   <Geography
                     key={geo.rsmKey}
                     geography={geo}
-                    onClick={() => handleStateClick(stateCode)}
+                    onClick={() => handleStateClick(stateName)}
                     onMouseEnter={() => {
-                      setTooltipContent(geo.properties.name);
+                      setTooltipContent(stateName);
                     }}
                     onMouseLeave={() => {
                       setTooltipContent("");
@@ -1260,21 +1123,24 @@ const EnhancedMap: React.FC<{
                       default: {
                         fill: voteColor || "#D6D6DA",
                         outline: "none",
-                        stroke: isHome ? "#1A365D" : "#FFF",
-                        strokeWidth: isHome ? 2 : 1,
+                        stroke: isMemberState ? "#ffff00" : isSelectedState ? "#1A365D" : "#FFF",
+                        strokeWidth: isMemberState ? 40 : isSelectedState ? 4 : 1,
+                        filter: isMemberState ? "drop-shadow(0 0 4px #000)" : undefined,
                       },
                       hover: {
                         fill: voteColor || "#A5A5A5",
                         outline: "none",
-                        stroke: "#1A365D",
-                        strokeWidth: 2,
+                        stroke: isMemberState ? "#ffff00" : isSelectedState ? "#1A365D" : "#1A365D",
+                        strokeWidth: isMemberState ? 40 : isSelectedState ? 4 : 2,
                         cursor: "pointer",
+                        filter: isMemberState ? "drop-shadow(0 0 4px #000)" : undefined,
                       },
                       pressed: {
                         fill: voteColor || "#666666",
                         outline: "none",
-                        stroke: "#1A365D",
-                        strokeWidth: 2,
+                        stroke: isMemberState ? "#ffff00" : isSelectedState ? "#1A365D" : "#1A365D",
+                        strokeWidth: isMemberState ? 40 : isSelectedState ? 4 : 2,
+                        filter: isMemberState ? "drop-shadow(0 0 4px #000)" : undefined,
                       },
                     }}
                   />
@@ -1308,11 +1174,6 @@ const EnhancedMap: React.FC<{
         stateCode={selectedState || ''} 
         stateName={stateList.find(s => s.code === selectedState)?.name || ''}
         onSelectMember={setSelectedMember}
-      />
-      <ZipCodeSearchModal
-        isOpen={isZipModalOpen}
-        onClose={onZipModalClose}
-        zipCode={zipCode}
       />
     </Box>
   );
@@ -1373,7 +1234,15 @@ const Footer: React.FC<{ pinnedBills: string[]; handleTogglePin: (bill: Bill) =>
 };
 
 // Enhanced Search Modal Component
-const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void; setSelectedMember: (member: Member) => void; setSelectedBill: (bill: Bill) => void; setSelectedBillForModal: (bill: Bill) => void }> = ({ isOpen, onClose, setSelectedMember, setSelectedBill, setSelectedBillForModal }) => {
+const SearchModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  setSelectedMember: (member: Member) => void; 
+  setSelectedBill: (bill: Bill) => void; 
+  setSelectedBillForModal: (bill: Bill) => void;
+  pinnedBills: string[];
+  handleTogglePin: (bill: Bill) => void;
+}> = ({ isOpen, onClose, setSelectedMember, setSelectedBill, setSelectedBillForModal, pinnedBills, handleTogglePin }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'bills' | 'members' | 'committees'>('bills');
@@ -1386,7 +1255,7 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void; setSelectedM
   const [selectedCommittee, setSelectedCommittee] = useState<Committee | null>(null);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const { isOpen: isBillOpen, onOpen: onBillOpen, onClose: onBillClose } = useDisclosure();
-
+  
   // Get total counts for tabs
   const totalBills = staticDataService.getBills().length;
   const totalMembers = staticDataService.getMembers().length;
@@ -1461,6 +1330,11 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void; setSelectedM
     return `No ${tab} found matching "${searchQuery}"`;
   };
 
+  const isBillPinned = (bill: Bill) => {
+    const billId = `${bill.billType.toUpperCase()}${bill.billNumber}`;
+    return pinnedBills.includes(billId);
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
@@ -1493,9 +1367,18 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void; setSelectedM
                   </Stack>
                 ) : (
                   <Stack spacing={4}>
-                    {searchResults.bills.map((bill) => (
-                      <BillCard key={`${bill.congress}-${bill.billType}-${bill.billNumber}`} bill={convertApiBill(bill)} onViewDetails={bill => setSelectedBillForModal(bill)} />
-                    ))}
+                    {searchResults.bills.map((bill) => {
+                      const convertedBill = convertApiBill(bill);
+                      return (
+                        <BillCard 
+                          key={`${bill.congress}-${bill.billType}-${bill.billNumber}`} 
+                          bill={convertedBill} 
+                          onViewDetails={bill => setSelectedBillForModal(bill)}
+                          isPinned={isBillPinned(convertedBill)}
+                          onTogglePin={handleTogglePin}
+                        />
+                      );
+                    })}
                     {searchResults.bills.length === 0 && (
                       <Box textAlign="center" py={8}>
                         <Text color="gray.500">{getEmptyStateMessage('bills')}</Text>
@@ -1635,9 +1518,10 @@ const App: React.FC = () => {
   const isMobile = useResponsiveLayout();
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const allMembers = staticDataService.getMembers();
-  const [selectedMember, setSelectedMember] = useState<Member>(
-    allMembers[Math.floor(Math.random() * allMembers.length)]
-  );
+  const [selectedMember, setSelectedMember] = useState<Member | null>(() => {
+    const randomIndex = Math.floor(Math.random() * allMembers.length);
+    return allMembers[randomIndex];
+  });
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const { isOpen: isSearchOpen, onOpen: onSearchOpen, onClose: onSearchClose } = useDisclosure();
   const { isOpen: isDrawerOpen, onOpen: onDrawerOpen, onClose: onDrawerClose } = useDisclosure();
@@ -1656,8 +1540,19 @@ const App: React.FC = () => {
 
   const handleStateSelect = (state: string) => {
     setSelectedState(state);
-    setSelectedMember(mockMember);
+    setSelectedMember(null);
+    // Find a real member from the selected state
+    const members = allMembers.filter(m => m.state === state);
+    if (members.length > 0) {
+      setSelectedMember(members[0]);
+    }
     toast({ title: `Selected ${state}`, status: 'info', duration: 2000 });
+  };
+
+  const handleRandomMember = () => {
+    const randomIndex = Math.floor(Math.random() * allMembers.length);
+    setSelectedMember(allMembers[randomIndex]);
+    toast({ title: 'Loaded random member', status: 'info', duration: 2000 });
   };
 
   return (
@@ -1675,7 +1570,7 @@ const App: React.FC = () => {
         >
           <Container maxW="container.xl" py={4}>
             <Flex justify="space-between" align="center" wrap={{ base: 'wrap', md: 'nowrap' }} gap={4}>
-              <Heading size="md">Congress Explorer</Heading>
+              <Heading size="md">Legislative Lens</Heading>
               <IconButton
                 display={{ base: 'flex', md: 'none' }}
                 aria-label="Menu"
@@ -1751,24 +1646,12 @@ const App: React.FC = () => {
                         bill={selectedBill}
                         selectedState={selectedState}
                         onSelectState={handleStateSelect}
-                        homeState="CA"
                         setSelectedMember={setSelectedMember}
+                        selectedMember={selectedMember}
                       />
                     </Box>
-                    <Box bg="white" p={4} rounded="md" shadow="sm">
-                      <Flex justify="flex-end" mb={2}>
-                        <IconButton
-                          icon={<RepeatIcon />}
-                          aria-label="Refresh Member"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            const randomMember = allMembers[Math.floor(Math.random() * allMembers.length)];
-                            setSelectedMember(randomMember);
-                          }}
-                        />
-                      </Flex>
-                      <MemberCard member={selectedMember} />
+                    <Box flex={1} minW={0}>
+                      {selectedMember && <MemberCard member={selectedMember} onRandom={handleRandomMember} />}
                     </Box>
                   </VStack>
                 </AccordionPanel>
@@ -1783,12 +1666,12 @@ const App: React.FC = () => {
                     bill={selectedBill}
                     selectedState={selectedState}
                     onSelectState={handleStateSelect}
-                    homeState="CA"
                     setSelectedMember={setSelectedMember}
+                    selectedMember={selectedMember}
                   />
                 </Box>
                 <Box flex={1} minW={0}>
-                  <MemberCard member={selectedMember} />
+                  {selectedMember && <MemberCard member={selectedMember} onRandom={handleRandomMember} />}
                 </Box>
               </HStack>
               {/* Bottom Panel: Recent Bills */}
@@ -1850,7 +1733,7 @@ const App: React.FC = () => {
         <Footer pinnedBills={pinnedBills} handleTogglePin={handleTogglePin} allBills={staticDataService.getBills().map(convertApiBill)} setSelectedBillForModal={setSelectedBillForModal} />
 
         {/* Search Modal */}
-        <SearchModal isOpen={isSearchOpen} onClose={onSearchClose} setSelectedMember={setSelectedMember} setSelectedBill={setSelectedBill} setSelectedBillForModal={setSelectedBillForModal} />
+        <SearchModal isOpen={isSearchOpen} onClose={onSearchClose} setSelectedMember={setSelectedMember} setSelectedBill={setSelectedBill} setSelectedBillForModal={setSelectedBillForModal} pinnedBills={pinnedBills} handleTogglePin={handleTogglePin} />
 
         {/* Mobile Drawer */}
         <Drawer isOpen={isDrawerOpen} placement="right" onClose={onDrawerClose}>

@@ -43,6 +43,14 @@ interface RawMember {
   };
   updateDate?: string;
   url: string;
+  contactInfo?: string;
+  reelectionDate?: string;
+  photoUrl?: string;
+  votingRecord?: Array<{
+    billId: string;
+    vote: string;
+  }>;
+  birthYear?: string;
 }
 
 interface RawBill {
@@ -244,26 +252,50 @@ function transformMember(rawMember: RawMember): Member {
   if (Array.isArray(rawMember.terms) && rawMember.terms.length > 0) {
     mostRecentTerm = rawMember.terms.reduce((a, b) => (a.congress > b.congress ? a : b));
   }
+  // Helper to map voting record vote string to allowed enum
+  const mapVote = (vote: string): "yes" | "no" | "present" | "not_voting" => {
+    switch (vote.toLowerCase()) {
+      case "yes":
+      case "yea":
+        return "yes";
+      case "no":
+      case "nay":
+        return "no";
+      case "present":
+        return "present";
+      case "not_voting":
+      case "not voting":
+        return "not_voting";
+      default:
+        return "not_voting";
+    }
+  };
   return {
     id: rawMember.bioguideId,
     bioguideId: rawMember.bioguideId,
     firstName: rawMember.firstName,
     lastName: rawMember.lastName,
-    fullName: rawMember.directOrderName,
+    fullName: rawMember.directOrderName || `${rawMember.firstName} ${rawMember.lastName}`,
     state: rawMember.state,
     stateCode: mostRecentTerm?.stateCode,
     stateName: mostRecentTerm?.stateName,
-    district: rawMember.district?.toString(),
+    district: rawMember.district?.toString() || mostRecentTerm?.district?.toString(),
     party: rawMember.party,
     chamber: rawMember.chamber.toLowerCase().includes('house') ? 'house' : 'senate',
-    committees: [], // We'll need to get this from a different source
-    contactInfo: undefined,
-    reelectionDate: undefined,
-    photoUrl: rawMember.depiction?.imageUrl,
-    votingRecord: undefined,
+    committees: [], // TODO: Derive from committee data if available
+    contactInfo: rawMember.contactInfo || undefined,
+    reelectionDate: rawMember.reelectionDate || undefined,
+    photoUrl: rawMember.depiction?.imageUrl || rawMember.photoUrl,
+    votingRecord: rawMember.votingRecord
+      ? rawMember.votingRecord.map(vr => ({ billId: vr.billId, vote: mapVote(vr.vote) }))
+      : undefined,
     depiction: rawMember.depiction,
     createdAt: undefined,
-    updatedAt: rawMember.updateDate
+    updatedAt: rawMember.updateDate,
+    birthYear: rawMember.birthYear || undefined,
+    sponsoredLegislation: rawMember.sponsoredLegislation || undefined,
+    cosponsoredLegislation: rawMember.cosponsoredLegislation || undefined,
+    terms: rawMember.terms || [],
   };
 }
 

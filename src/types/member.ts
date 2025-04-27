@@ -30,7 +30,24 @@ export interface Member {
   depiction?: MemberDepiction;
   createdAt?: string;
   updatedAt?: string;
-  dateOfBirth?: string;
+  birthYear?: string;
+  sponsoredLegislation?: {
+    count: number;
+    url: string;
+  };
+  cosponsoredLegislation?: {
+    count: number;
+    url: string;
+  };
+  terms?: Array<{
+    congress: number;
+    chamber: string;
+    district: number;
+    startYear: number;
+    endYear?: number;
+    stateCode: string;
+    stateName: string;
+  }>;
 }
 
 export interface StateMembers {
@@ -70,6 +87,6 @@ export function convertApiMember(apiMember: any): Member {
     depiction: apiMember.depiction,
     createdAt: apiMember.createdAt,
     updatedAt: apiMember.updatedAt,
-    dateOfBirth: apiMember.dateOfBirth,
+    birthYear: apiMember.birthYear,
   };
 } 
