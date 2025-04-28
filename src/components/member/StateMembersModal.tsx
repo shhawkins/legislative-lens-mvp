@@ -21,7 +21,6 @@ import {
   Tab,
   TabPanels,
   TabPanel,
-  Tooltip,
   useColorModeValue,
   Spinner,
   Button,
@@ -188,14 +187,10 @@ const MemberCard: React.FC<{ member: Member; showDistrict?: boolean; onViewProfi
               )}
             </VStack>
           </Flex>
-
-          <Flex gap={2} wrap="wrap">
             {member.committees?.map(committee => (
-              <Tooltip key={committee} label={committee}>
-                <Badge colorScheme="gray" fontSize="xs">
-                  {committee}
-                </Badge>
-              </Tooltip>
+              <Badge key={committee} colorScheme="blue" variant="outline">
+                {committee}
+              </Badge>
             ))}
           </Flex>
 
@@ -233,7 +228,6 @@ const MemberCard: React.FC<{ member: Member; showDistrict?: boolean; onViewProfi
               />
             )}
           </Flex>
-        </Flex>
       </CardBody>
     </Card>
   );
@@ -281,15 +275,33 @@ const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
-      <ModalContent maxW="75vw" margin="auto">
+      <ModalContent 
+        maxW={{ base: "90%", md: "75vw" }}
+        maxH={{ base: "90vh", md: "85vh" }}
+        h={{ base: "90vh", md: "85vh" }}
+        display="flex"
+        flexDirection="column"
+        margin="auto"
+        onWheel={(e) => {
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onScroll={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <ModalHeader>
           <Heading size="lg">Congressional Delegation: {stateCode}</Heading>
           <Text fontSize="md" color="gray.600" mt={2}>
-            Senators and Representatives currently serving {stateCode}
+            Senators and Representatives serving {stateCode}
           </Text>
         </ModalHeader>
         <ModalCloseButton />
-        <ModalBody pb={6}>
+        <ModalBody pb={6} flex="1" overflowY="auto">
           {isLoading ? (
             <Flex justify="center" align="center" minH="300px">
               <Spinner size="xl" />
@@ -299,9 +311,9 @@ const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, 
           ) : (
             <Tabs index={activeTab} onChange={setActiveTab}>
               <TabList>
-                <Tab>All Members</Tab>
-                <Tab>Senators</Tab>
-                <Tab>Representatives</Tab>
+                <Tab>All Members ({senators.length + representatives.length})</Tab>
+                <Tab>Senators (2)</Tab>
+                <Tab>Representatives ({representatives.length})</Tab>
               </TabList>
 
               <TabPanels>
@@ -377,7 +389,19 @@ const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, 
       {selectedMember && (
         <Modal isOpen={isMemberModalOpen} onClose={onMemberModalClose} size="xl">
           <ModalOverlay />
-          <ModalContent>
+          <ModalContent
+            onWheel={(e) => {
+              e.stopPropagation();
+            }}
+            onTouchMove={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onScroll={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
             <ModalHeader>
               <Heading size="lg">{selectedMember.fullName || `${selectedMember.firstName} ${selectedMember.lastName}`}</Heading>
               <Text fontSize="sm" color="gray.500" mt={1}>
@@ -446,11 +470,17 @@ const StateMembersModal: React.FC<StateMembersModalProps> = ({ isOpen, onClose, 
                                 <CardBody>
                                   <Flex justify="space-between" align="center">
                                     <Box>
-                                      <Text fontSize="md" fontWeight="medium">Bill {record.billId}</Text>
+                                      <Link 
+                                        href={`https://www.congress.gov/bill/119th-congress/${record.billId.startsWith('HR') ? 'house-bill' : 'senate-bill'}/${record.billId.substring(2)}`} 
+                                        isExternal 
+                                        color="blue.500"
+                                      >
+                                        Bill {record.billId}
+                                      </Link>
                                       <Text fontSize="sm" color="gray.500">Vote: {record.vote.toUpperCase()}</Text>
                                     </Box>
                                     <Badge
-                                      colorScheme={record.vote === 'yes' ? 'green' : 'red'}
+                                      colorScheme={record.vote === 'yes' ? 'green' : record.vote === 'no' ? 'red' : 'gray'}
                                       fontSize="sm"
                                     >
                                       {record.vote.toUpperCase()}

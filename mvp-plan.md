@@ -91,7 +91,6 @@ Deliver a working, polished React frontend for Legislative Lens using only stati
   - [x] Map vote coloring
     - [x] Basic state coloring (static, matches 2024 results)
     - [ ] Dynamic vote result display
-    - [ ] Tooltip enhancements
   - [ ] Member profile improvements
     - [x] Photo integration
     - [ ] Voting record visualization

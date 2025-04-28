@@ -37,12 +37,6 @@ import {
   InputGroup,
   InputRightElement,
   IconButton,
-  Drawer,
-  DrawerOverlay,
-  DrawerContent,
-  DrawerCloseButton,
-  DrawerHeader,
-  DrawerBody,
   VStack,
   Center,
   Select,
@@ -51,9 +45,10 @@ import {
   Link,
   UnorderedList,
   ListItem,
+  Image,
 } from '@chakra-ui/react';
 import { debounce } from 'lodash';
-import { ViewIcon, AddIcon, SearchIcon, HamburgerIcon, InfoIcon, SettingsIcon, QuestionIcon, ExternalLinkIcon, RepeatIcon } from '@chakra-ui/icons';
+import { ViewIcon, AddIcon, SearchIcon, HamburgerIcon, InfoIcon, SettingsIcon, QuestionIcon, ExternalLinkIcon, RepeatIcon, StarIcon } from '@chakra-ui/icons';
 import {
   ComposableMap,
   Geographies,
@@ -75,6 +70,7 @@ import BillSummary from './components/bill/BillSummary';
 import { AppContext } from './context/AppContext';
 import { convertApiBill } from './types/bill';
 import BillCard from './components/bill/BillCard';
+import { BsDice5 } from "react-icons/bs";
 
 // Mock data
 const mockBill: Bill = {
@@ -437,7 +433,20 @@ const CommitteeModal: React.FC<{
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent
+        maxW={{ base: '95%', sm: '95%', md: '700px', lg: '900px', xl: '1100px' }}
+        onWheel={(e) => {
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onScroll={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <ModalHeader>
           <Heading size="lg">{committee.name}</Heading>
           <Text fontSize="sm" color="gray.500">
@@ -671,7 +680,7 @@ const useMemberPhoto = (bioguideId: string) => {
 };
 
 // Update the MemberCard component to use the new photo handling
-const MemberCard: React.FC<{ member: Member; onRandom?: () => void }> = ({ member, onRandom }) => {
+const MemberCard: React.FC<{ member: Member; onRandom?: () => void; setSelectedBillForModal?: (bill: Bill | null) => void }> = ({ member, onRandom, setSelectedBillForModal }) => {
   // Use dummy data for all fields
   const fallbackPhotoUrl = 'https://bioguide.congress.gov/bioguide/photo/H/H001098.jpg';
   const photoUrl = member.depiction?.imageUrl || member.photoUrl || fallbackPhotoUrl;
@@ -681,15 +690,13 @@ const MemberCard: React.FC<{ member: Member; onRandom?: () => void }> = ({ membe
 
   // Dummy data
   const dummyCommittees = ["Judiciary", "Finance", "Energy and Commerce"];
-  const dummyContact = "rep.email@congress.gov";
+  const dummyContact = `${member.firstName.toLowerCase()}.${member.lastName.toLowerCase()}@mail.${member.chamber}.gov`;
   const dummyNextElection = "2026-11-03";
   const dummyVotes = [
-    { billId: 'HR123', vote: 'yes' },
-    { billId: 'S456', vote: 'no' },
-    { billId: 'HR789', vote: 'present' }
+    { billId: 'HR123', vote: 'yes', title: 'Rural Broadband Protection Act of 2025', billAbbr: 'HR123' },
+    { billId: 'S456', vote: 'no', title: 'Critical Infrastructure Manufacturing Feasibility Act', billAbbr: 'S456' },
+    { billId: 'HR789', vote: 'present', title: 'Foreign Adversary Communications Transparency Act', billAbbr: 'HR789' }
   ];
-  const dummySponsored = 280;
-  const dummyCosponsored = 855;
   const birthYear = member.birthYear || 'N/A';
   const partyLabel = member.party === 'D' ? 'Democrat' : member.party === 'R' ? 'Republican' : 'Independent';
   const partyColor = member.party === 'D' ? 'blue' : member.party === 'R' ? 'red' : 'gray';
@@ -718,7 +725,7 @@ const MemberCard: React.FC<{ member: Member; onRandom?: () => void }> = ({ membe
           <Box flex={1} position="relative">
             {onRandom && (
               <IconButton
-                icon={<RepeatIcon/>}
+                icon={<RepeatIcon />}
                 aria-label="Load random member"
                 size="sm"
                 variant="ghost"
@@ -738,10 +745,15 @@ const MemberCard: React.FC<{ member: Member; onRandom?: () => void }> = ({ membe
               <Badge colorScheme="purple">{chamberLabel}</Badge>
             </HStack>
             <Text fontSize="sm" color="gray.500">Born: {birthYear}</Text>
-            <Link href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}`} isExternal>
-              <Button size="sm" variant="ghost" colorScheme="blue" leftIcon={<ExternalLinkIcon />} mt={2}>
-                View on Congress.gov
-              </Button>
+            <Link 
+              href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D#search-results-wrapper`} 
+              isExternal 
+              color="blue.500" 
+              ml={2}
+              fontWeight="bold"
+            >
+              <ExternalLinkIcon mb="2px" mr={1} />
+              View on Congress.gov
             </Link>
           </Box>
         </Flex>
@@ -768,37 +780,62 @@ const MemberCard: React.FC<{ member: Member; onRandom?: () => void }> = ({ membe
             <Text fontSize="sm">{dummyContact}</Text>
             <Box mt={6}>
               <Heading size="sm" mb={2}>Legislation</Heading>
-              <Text fontSize="sm">
-                Sponsored: {dummySponsored}
+              <Flex fontSize="sm" align="center" gap={1} whiteSpace="nowrap">
+                Sponsored: {member.sponsoredLegislation?.count || 0}
                 <Link 
-                  href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D`} 
+                  href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D#search-results-wrapper`} 
                   isExternal 
                   color="blue.500" 
                   ml={2}
+                  fontWeight="bold"
                 >
-                  View
+                  <ExternalLinkIcon mb="2px" mr={1} />
+                  View on Congress.gov
                 </Link>
-              </Text>
-              <Text fontSize="sm">
-                Co-sponsored: {dummyCosponsored}
+              </Flex>
+              <Flex fontSize="sm" align="center" gap={1} whiteSpace="nowrap">
+                Co-sponsored: {member.cosponsoredLegislation?.count || 0}
                 <Link 
-                  href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22cosponsored%22%7D`} 
+                  href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22cosponsored%22%7D#search-results-wrapper`} 
                   isExternal 
                   color="blue.500" 
                   ml={2}
+                  fontWeight="bold"
                 >
-                  View
+                  <ExternalLinkIcon mb="2px" mr={1} />
+                  View on Congress.gov
                 </Link>
-              </Text>
+              </Flex>
             </Box>
           </Box>
           {/* Right Column */}
           <Box>
-            <Heading size="sm" mb={3}>Recent Voting Record</Heading>
+            <Heading size="sm" mb={3}>Recent Votes</Heading>
             <Flex direction="column" gap={2}>
               {dummyVotes.map((record, index) => (
                 <Flex key={index} justify="space-between" align="center">
-                  <Text fontSize="sm" isTruncated>Bill {record.billId}</Text>
+                  <Box
+                    as="button"
+                    color="blue.500"
+                    fontWeight="medium"
+                    bg="none"
+                    border="none"
+                    p={0}
+                    m={0}
+                    cursor="pointer"
+                    textAlign="left"
+                    _hover={{ textDecoration: 'underline', color: 'blue.700' }}
+                    onClick={() => {
+                      if (setSelectedBillForModal) {
+                        const bills = staticDataService.getBills();
+                        const randomBill = bills[Math.floor(Math.random() * bills.length)];
+                        setSelectedBillForModal(convertApiBill(randomBill));
+                      }
+                    }}
+                    title={record.title}
+                  >
+                    {record.billAbbr}
+                  </Box>
                   <Box
                     bg={record.vote === 'yes' ? 'green.100' : record.vote === 'no' ? 'red.100' : 'gray.100'}
                     color={record.vote === 'yes' ? 'green.700' : record.vote === 'no' ? 'red.700' : 'gray.700'}
@@ -839,16 +876,34 @@ const MemberCard: React.FC<{ member: Member; onRandom?: () => void }> = ({ membe
       {/* Member Profile Modal */}
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent
+          maxW={{ base: '95%', sm: '95%', md: '700px', lg: '900px', xl: '1100px' }}
+          onWheel={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchMove={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onScroll={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
           <ModalHeader>
             <Heading size="lg">{member.fullName || `${member.firstName} ${member.lastName}`}</Heading>
             <Text fontSize="sm" color="gray.500" mt={1}>
               {member.state}{member.district ? `-${member.district}` : ''} • {partyLabel}
             </Text>
-            <Link href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}`} isExternal>
-              <Button size="sm" variant="ghost" colorScheme="blue" leftIcon={<ExternalLinkIcon />} mt={2}>
-                View on Congress.gov
-              </Button>
+            <Link 
+              href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D#search-results-wrapper`} 
+              isExternal 
+              color="blue.500" 
+              ml={2}
+              fontWeight="bold"
+            >
+              <ExternalLinkIcon mb="2px" mr={1} />
+              View on Congress.gov
             </Link>
           </ModalHeader>
           <ModalCloseButton />
@@ -876,28 +931,32 @@ const MemberCard: React.FC<{ member: Member; onRandom?: () => void }> = ({ membe
                   {/* Sponsored/Co-sponsored Legislation */}
                   <Box mt={4}>
                     <Heading size="sm" mb={2}>Legislation</Heading>
-                    <Text fontSize="sm">
-                      Sponsored: {dummySponsored}
+                    <Flex fontSize="sm" align="center" gap={1} whiteSpace="nowrap">
+                      Sponsored: {member.sponsoredLegislation?.count || 0}
                       <Link 
-                        href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D`} 
+                        href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D#search-results-wrapper`} 
                         isExternal 
                         color="blue.500" 
                         ml={2}
+                        fontWeight="bold"
                       >
-                        View
+                        <ExternalLinkIcon mb="2px" mr={1} />
+                        View on Congress.gov
                       </Link>
-                    </Text>
-                    <Text fontSize="sm">
-                      Co-sponsored: {dummyCosponsored}
+                    </Flex>
+                    <Flex fontSize="sm" align="center" gap={1} whiteSpace="nowrap">
+                      Co-sponsored: {member.cosponsoredLegislation?.count || 0}
                       <Link 
-                        href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22cosponsored%22%7D`} 
+                        href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22cosponsored%22%7D#search-results-wrapper`} 
                         isExternal 
                         color="blue.500" 
                         ml={2}
+                        fontWeight="bold"
                       >
-                        View
+                        <ExternalLinkIcon mb="2px" mr={1} />
+                        View on Congress.gov
                       </Link>
-                    </Text>
+                    </Flex>
                   </Box>
                 </Box>
               </Box>
@@ -962,31 +1021,34 @@ const MemberCard: React.FC<{ member: Member; onRandom?: () => void }> = ({ membe
                           {member.fullName} represents {member.state}{member.district ? `'s ${member.district}th district` : ''} in the {member.district ? 'House of Representatives' : 'Senate'}. 
                           As a {partyLabel}, they serve on the following committees: {dummyCommittees.join(', ')}.
                         </Text>
-                        {/* Sponsored/Co-sponsored Legislation */}
                         <Box mt={4}>
                           <Heading size="sm" mb={2}>Legislation</Heading>
-                          <Text fontSize="sm">
-                            Sponsored: {dummySponsored}
+                          <Flex fontSize="sm" align="center" gap={1} whiteSpace="nowrap">
+                            Sponsored: {member.sponsoredLegislation?.count || 0}
                             <Link 
-                              href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D`} 
+                              href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22sponsored%22%7D#search-results-wrapper`} 
                               isExternal 
                               color="blue.500" 
                               ml={2}
+                              fontWeight="bold"
                             >
-                              View
+                              <ExternalLinkIcon mb="2px" mr={1} />
+                              View on Congress.gov
                             </Link>
-                          </Text>
-                          <Text fontSize="sm">
-                            Co-sponsored: {dummyCosponsored}
+                          </Flex>
+                          <Flex fontSize="sm" align="center" gap={1} whiteSpace="nowrap">
+                            Co-sponsored: {member.cosponsoredLegislation?.count || 0}
                             <Link 
-                              href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22cosponsored%22%7D`} 
+                              href={`https://www.congress.gov/member/${member.firstName}-${member.lastName}/${member.bioguideId}?q=%7B%22sponsorship%22%3A%22cosponsored%22%7D#search-results-wrapper`} 
                               isExternal 
                               color="blue.500" 
                               ml={2}
+                              fontWeight="bold"
                             >
-                              View
+                              <ExternalLinkIcon mb="2px" mr={1} />
+                              View on Congress.gov
                             </Link>
-                          </Text>
+                          </Flex>
                         </Box>
                       </Box>
                     </TabPanel>
@@ -1056,15 +1118,25 @@ const EnhancedMap: React.FC<{
   };
 
   const handleStateSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const stateName = event.target.value;
-    if (stateName) {
-      onSelectState(stateName);
+    const state = event.target.value;
+    if (state) {
+      onSelectState(state);
       onStateModalOpen();
     }
   };
 
   return (
-    <Box position="relative" width="100%" height="300px">
+    <Box
+      position="relative"
+      w="100%"
+      aspectRatio={{ base: undefined, md: 16 / 9 }}
+      maxW="1200px"
+      mx="auto"
+      h={{ base: 'auto', md: undefined }}
+      minH={{ base: undefined, md: "400px" }}
+      mt={{ base: "20px", md: "40px" }}
+      overflow="visible"
+    >
       {/* SVG Pattern for swing red states */}
       <svg width="0" height="0">
         <defs>
@@ -1075,7 +1147,7 @@ const EnhancedMap: React.FC<{
         </defs>
       </svg>
       {/* Search Controls */}
-      <Box position="absolute" top={2} left={2} zIndex={1} bg="white" p={2} borderRadius="md" shadow="md">
+      <Box position="absolute" top={-10} left={0} zIndex={1} bg="white" p={2} borderRadius="md" shadow="md">
         <Select
           placeholder="Select a state"
           value={selectedState || ''}
@@ -1113,12 +1185,7 @@ const EnhancedMap: React.FC<{
                     key={geo.rsmKey}
                     geography={geo}
                     onClick={() => handleStateClick(stateName)}
-                    onMouseEnter={() => {
-                      setTooltipContent(stateName);
-                    }}
-                    onMouseLeave={() => {
-                      setTooltipContent("");
-                    }}
+
                     style={{
                       default: {
                         fill: voteColor || "#D6D6DA",
@@ -1151,22 +1218,6 @@ const EnhancedMap: React.FC<{
         </ZoomableGroup>
       </ComposableMap>
 
-      {/* Tooltip */}
-      {tooltipContent && (
-        <Box
-          position="absolute"
-          top={2}
-          right={2}
-          bg="white"
-          px={3}
-          py={2}
-          borderRadius="md"
-          shadow="md"
-          zIndex={1}
-        >
-          <Text fontSize="sm" fontWeight="medium">{tooltipContent}</Text>
-        </Box>
-      )}
 
       <StateMembersModal 
         isOpen={isStateModalOpen} 
@@ -1211,19 +1262,22 @@ const Footer: React.FC<{ pinnedBills: string[]; handleTogglePin: (bill: Bill) =>
       bg="white"
       boxShadow="0 -2px 10px rgba(0,0,0,0.1)"
       zIndex={2}
+      maxH={{ base: "50vh", md: "60vh" }}
+      overflowY="auto"
     >
-      <Container maxW="container.xl" py={4}>
-        <Accordion allowToggle>
+      <Container maxW="container.xl" py={3}>
+        <Accordion allowToggle defaultIndex={pinnedBills.length > 0 ? [0] : []}>
           <AccordionItem border="none">
             <AccordionButton>
               <Box flex="1" textAlign="left">
                 <Heading size="sm">
-                  Pinned Bills ({pinnedBills.length})
+                  <StarIcon color="black" mr={2} />
+                  Saved Bills ({pinnedBills.length})
                 </Heading>
               </Box>
               <AccordionIcon />
             </AccordionButton>
-            <AccordionPanel pb={4}>
+            <AccordionPanel pb={4} maxH="50vh" overflowY="auto">
               <PinnedBills bills={allBills} pinnedBills={pinnedBills} onTogglePin={handleTogglePin} onViewDetails={setSelectedBillForModal} />
             </AccordionPanel>
           </AccordionItem>
@@ -1338,8 +1392,21 @@ const SearchModal: React.FC<{
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>
+      <ModalContent
+        maxW={{ base: '95%', sm: '95%', md: '700px', lg: '900px', xl: '1100px' }}
+        onWheel={(e) => {
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onScroll={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
+        <ModalHeader pr="12">
           <Input
             placeholder="Search bills, members, or committees..."
             value={searchQuery}
@@ -1348,7 +1415,7 @@ const SearchModal: React.FC<{
             autoFocus
           />
         </ModalHeader>
-        <ModalCloseButton />
+        <ModalCloseButton top="18px" right="18px" />
         <ModalBody>
           <Tabs variant="enclosed" onChange={(index) => setActiveTab(['bills', 'members', 'committees'][index] as any)}>
             <TabList>
@@ -1524,10 +1591,11 @@ const App: React.FC = () => {
   });
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const { isOpen: isSearchOpen, onOpen: onSearchOpen, onClose: onSearchClose } = useDisclosure();
-  const { isOpen: isDrawerOpen, onOpen: onDrawerOpen, onClose: onDrawerClose } = useDisclosure();
   const toast = useToast();
   const [selectedBillForModal, setSelectedBillForModal] = useState<Bill | null>(null);
   const [pinnedBills, setPinnedBills] = useState<string[]>([]); // Array of bill IDs
+  // Add state for controlled Accordion
+  const [openSection, setOpenSection] = useState<number>(0);
 
   const handleTogglePin = (bill: Bill) => {
     const billId = `${bill.billType.toUpperCase()}${bill.billNumber}`;
@@ -1540,12 +1608,7 @@ const App: React.FC = () => {
 
   const handleStateSelect = (state: string) => {
     setSelectedState(state);
-    setSelectedMember(null);
-    // Find a real member from the selected state
-    const members = allMembers.filter(m => m.state === state);
-    if (members.length > 0) {
-      setSelectedMember(members[0]);
-    }
+    // Don't clear selectedMember here - it will be updated only when a new member is selected
     toast({ title: `Selected ${state}`, status: 'info', duration: 2000 });
   };
 
@@ -1570,14 +1633,11 @@ const App: React.FC = () => {
         >
           <Container maxW="container.xl" py={4}>
             <Flex justify="space-between" align="center" wrap={{ base: 'wrap', md: 'nowrap' }} gap={4}>
-              <Heading size="md">Legislative Lens</Heading>
-              <IconButton
-                display={{ base: 'flex', md: 'none' }}
-                aria-label="Menu"
-                icon={<HamburgerIcon />}
-                onClick={onDrawerOpen}
-                variant="outline"
-                colorScheme="whiteAlpha"
+              <Image 
+                src="/assets/header.png" 
+                alt="Legislative Lens" 
+                height="40px" 
+                objectFit="contain"
               />
               <IconButton
                 aria-label="Search"
@@ -1592,13 +1652,45 @@ const App: React.FC = () => {
         </Box>
 
         {/* Main Content */}
-        <Container maxW="container.xl" flex={1} py={6}>
+        <Container maxW="container.xl" flex={1} py={{ base: 2, md: 6 }} pb={{ base: "100px", md: pinnedBills.length > 0 ? "120px" : "80px" }}>
           {isMobile ? (
-            <Accordion allowToggle defaultIndex={[0]}>
+            <Accordion
+              allowToggle
+              index={openSection}
+              onChange={idx => {
+                if (typeof idx === 'number') {
+                  setOpenSection(idx); // idx will be -1 if all are closed
+                }
+              }}
+            >
               <AccordionItem>
                 <AccordionButton>
                   <Box flex="1" textAlign="left">
-                    <Heading size="sm">Bill Interface</Heading>
+                    <Heading size="sm">Members</Heading>
+                  </Box>
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel pb={4}>
+                  <VStack spacing={6} align="stretch">
+                    <Box bg="white" p={4} rounded="md" shadow="sm">
+                      <EnhancedMap
+                        bill={selectedBill}
+                        selectedState={selectedState}
+                        onSelectState={handleStateSelect}
+                        setSelectedMember={setSelectedMember}
+                        selectedMember={selectedMember}
+                      />
+                    </Box>
+                    <Box flex={1} minW={0}>
+                      {selectedMember && <MemberCard member={selectedMember} onRandom={handleRandomMember} setSelectedBillForModal={setSelectedBillForModal} />}
+                    </Box>
+                  </VStack>
+                </AccordionPanel>
+              </AccordionItem>
+              <AccordionItem>
+                <AccordionButton>
+                  <Box flex="1" textAlign="left">
+                    <Heading size="sm">Recent Bills</Heading>
                   </Box>
                   <AccordionIcon />
                 </AccordionButton>
@@ -1626,32 +1718,9 @@ const App: React.FC = () => {
                           {staticDataService.getBills().slice(0, 5).map(bill => (
                             <BillCard key={`${bill.congress}-${bill.billType}-${bill.billNumber}`} bill={convertApiBill(bill)} onViewDetails={bill => setSelectedBillForModal(bill)} isPinned={pinnedBills.includes(`${bill.billType.toUpperCase()}${bill.billNumber}`)} onTogglePin={handleTogglePin} />
                           ))}
+                          <Box height="60px" /> {/* Extra spacing at the bottom to prevent footer overlap */}
                         </VStack>
                       )}
-                    </Box>
-                  </VStack>
-                </AccordionPanel>
-              </AccordionItem>
-              <AccordionItem>
-                <AccordionButton>
-                  <Box flex="1" textAlign="left">
-                    <Heading size="sm">Member Interface</Heading>
-                  </Box>
-                  <AccordionIcon />
-                </AccordionButton>
-                <AccordionPanel pb={4}>
-                  <VStack spacing={6} align="stretch">
-                    <Box bg="white" p={4} rounded="md" shadow="sm">
-                      <EnhancedMap
-                        bill={selectedBill}
-                        selectedState={selectedState}
-                        onSelectState={handleStateSelect}
-                        setSelectedMember={setSelectedMember}
-                        selectedMember={selectedMember}
-                      />
-                    </Box>
-                    <Box flex={1} minW={0}>
-                      {selectedMember && <MemberCard member={selectedMember} onRandom={handleRandomMember} />}
                     </Box>
                   </VStack>
                 </AccordionPanel>
@@ -1671,13 +1740,13 @@ const App: React.FC = () => {
                   />
                 </Box>
                 <Box flex={1} minW={0}>
-                  {selectedMember && <MemberCard member={selectedMember} onRandom={handleRandomMember} />}
+                  {selectedMember && <MemberCard member={selectedMember} onRandom={handleRandomMember} setSelectedBillForModal={setSelectedBillForModal} />}
                 </Box>
               </HStack>
               {/* Bottom Panel: Recent Bills */}
-              <Box>
+              <Box mb={6}>
                 <Heading size="md" mb={4}>Recent Bills</Heading>
-                <VStack spacing={4} align="stretch">
+                <VStack spacing={4} align="stretch" mb={8}>
                   {staticDataService.getBills().slice(0, 5).map(bill => (
                     <BillCard
                       key={`${bill.congress}-${bill.billType}-${bill.billNumber}`}
@@ -1694,38 +1763,7 @@ const App: React.FC = () => {
         </Container>
 
         {/* Main Content - Footer Divider */}
-        <Box 
-          position="relative" 
-          cursor="row-resize" 
-          _hover={{ bg: "gray.100" }}
-          onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-            const startY = e.clientY;
-            const mainContent = e.currentTarget?.previousElementSibling as HTMLDivElement | null;
-            const footer = e.currentTarget?.nextElementSibling as HTMLDivElement | null;
-            const startMainHeight = mainContent?.offsetHeight || 0;
-            const startFooterHeight = footer?.offsetHeight || 0;
-            
-            const handleMouseMove = (e: MouseEvent) => {
-              const delta = e.clientY - startY;
-              const newMainHeight = startMainHeight + delta;
-              const newFooterHeight = startFooterHeight - delta;
-              if (mainContent) {
-                mainContent.style.height = `${newMainHeight}px`;
-              }
-              if (footer) {
-                footer.style.height = `${newFooterHeight}px`;
-              }
-            };
-            
-            const handleMouseUp = () => {
-              document.removeEventListener('mousemove', handleMouseMove);
-              document.removeEventListener('mouseup', handleMouseUp);
-            };
-            
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-          }}
-        >
+        <Box>
           <Divider borderColor="gray.200" />
         </Box>
 
@@ -1735,21 +1773,6 @@ const App: React.FC = () => {
         {/* Search Modal */}
         <SearchModal isOpen={isSearchOpen} onClose={onSearchClose} setSelectedMember={setSelectedMember} setSelectedBill={setSelectedBill} setSelectedBillForModal={setSelectedBillForModal} pinnedBills={pinnedBills} handleTogglePin={handleTogglePin} />
 
-        {/* Mobile Drawer */}
-        <Drawer isOpen={isDrawerOpen} placement="right" onClose={onDrawerClose}>
-          <DrawerOverlay />
-          <DrawerContent>
-            <DrawerCloseButton />
-            <DrawerHeader>Menu</DrawerHeader>
-            <DrawerBody>
-              <VStack spacing={4} align="stretch">
-                <Button variant="ghost" leftIcon={<InfoIcon />}>About</Button>
-                <Button variant="ghost" leftIcon={<SettingsIcon />}>Settings</Button>
-                <Button variant="ghost" leftIcon={<QuestionIcon />}>Help</Button>
-              </VStack>
-            </DrawerBody>
-          </DrawerContent>
-        </Drawer>
       </Flex>
 
       {selectedBillForModal && (

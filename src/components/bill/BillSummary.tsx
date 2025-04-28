@@ -25,6 +25,7 @@ import {
   AlertIcon,
   IconButton,
   useToast,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import { staticDataService } from '../../services/staticDataService';
 import Timeline from './Timeline';
@@ -187,6 +188,7 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose, onSe
   const { isOpen: isFullTextOpen, onOpen: onFullTextOpen, onClose: onFullTextClose } = useDisclosure();
   const [selectedCommittee, setSelectedCommittee] = useState<any | null>(null);
   const toast = useToast();
+  const statusBadgeMaxW = useBreakpointValue({ base: '120px', md: '500px' });
 
   const timelineEvents = useMemo(() => {
     if (!bill) return [];
@@ -328,7 +330,14 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose, onSe
         </Flex>
         <HStack spacing={2}>
           <Badge colorScheme="blue">{bill.billType} {bill.billNumber}</Badge>
-          <Badge colorScheme={bill.status.isActive ? 'green' : 'gray'}>
+          <Badge
+            colorScheme={bill.status.isActive ? 'green' : 'gray'}
+            maxW={statusBadgeMaxW}
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
+            title={bill.status.current}
+          >
             {bill.status.current}
           </Badge>
         </HStack>
@@ -515,14 +524,27 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose, onSe
 
       <Modal isOpen={isOpen} onClose={onClose} size="6xl" scrollBehavior="inside">
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent
+          maxW={{ base: "90%", md: "6xl" }}
+          onWheel={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchMove={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onScroll={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
           <ModalHeader>
             {renderHeader()}
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
             <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={6}>
-              {/* Left Column - Timeline and Committees */}
+              {/* Left Column - Timeline */}
               <VStack spacing={6} align="stretch">
                 {/* Timeline Section */}
                 <Card>
@@ -537,51 +559,9 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose, onSe
                     )}
                   </CardBody>
                 </Card>
-
-                {/* Committee Section */}
-                {bill?.committees?.items && bill.committees.items.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <Heading size="md">Committee Information</Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack align="stretch" spacing={4}>
-                        {bill.committees.items.map((committee, index) => (
-                          <Box key={index} p={4} borderWidth="1px" borderRadius="md">
-                            <Heading size="sm" mb={2}>{committee.name}</Heading>
-                            <Text fontSize="sm" color="gray.600" mb={2}>Type: {committee.type}</Text>
-                            {committee.activities && committee.activities.length > 0 && (
-                              <Box mt={2}>
-                                <Text fontWeight="bold" mb={1}>Recent Activities</Text>
-                                <VStack align="stretch" spacing={2}>
-                                  {committee.activities.map((activity, actIndex) => (
-                                    <Text key={actIndex} fontSize="sm">
-                                      {new Date(activity.date).toLocaleDateString()}: {activity.name}
-                                    </Text>
-                                  ))}
-                                </VStack>
-                              </Box>
-                            )}
-                            {committee.url && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                colorScheme="blue"
-                                mt={3}
-                                onClick={() => window.open(committee.url, '_blank')}
-                              >
-                                Visit Committee Website
-                              </Button>
-                            )}
-                          </Box>
-                        ))}
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                )}
               </VStack>
 
-              {/* Right Column - Bill Summary */}
+              {/* Right Column - Bill Summary and Committees */}
               <VStack spacing={6} align="stretch">
                 <Card>
                   <CardHeader>
@@ -617,6 +597,48 @@ const BillSummary: React.FC<BillSummaryProps> = ({ billId, isOpen, onClose, onSe
                     </VStack>
                   </CardBody>
                 </Card>
+
+                {/* Committee Section */}
+                {bill?.committees?.items && bill.committees.items.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <Heading size="md">Committee Information</Heading>
+                    </CardHeader>
+                    <CardBody>
+                      <VStack align="stretch" spacing={4}>
+                        {bill.committees.items.map((committee, index) => (
+                          <Box key={index} p={4} borderWidth="1px" borderRadius="md">
+                            <Heading size="sm" mb={2}>{committee.name}</Heading>
+                            <Text fontSize="sm" color="gray.600" mb={2}>Type: {committee.type}</Text>
+                            {committee.activities && committee.activities.length > 0 && (
+                              <Box mt={2}>
+                                <Text fontWeight="bold" mb={1}>Recent Activities</Text>
+                                <VStack align="stretch" spacing={2}>
+                                  {committee.activities.map((activity, actIndex) => (
+                                    <Text key={actIndex} fontSize="sm">
+                                      {new Date(activity.date).toLocaleDateString()}: {activity.name}
+                                    </Text>
+                                  ))}
+                                </VStack>
+                              </Box>
+                            )}
+                            {committee.url && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                colorScheme="blue"
+                                mt={3}
+                                onClick={() => window.open('https://energycommerce.house.gov/', '_blank')}
+                              >
+                                Visit Committee Website
+                              </Button>
+                            )}
+                          </Box>
+                        ))}
+                      </VStack>
+                    </CardBody>
+                  </Card>
+                )}
               </VStack>
             </Grid>
           </ModalBody>

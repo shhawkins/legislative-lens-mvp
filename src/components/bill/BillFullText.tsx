@@ -84,11 +84,22 @@ Nothing in this Act shall be construed to—
     >
       <ModalOverlay />
       <ModalContent 
-        maxW="75%"
+        maxW={{ base: "90%", md: "75%" }}
         maxH="85vh"
         h="85vh"
         display="flex"
         flexDirection="column"
+        onWheel={(e) => {
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onScroll={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
       >
         <ModalHeader borderBottomWidth="1px" flex="0 0 auto">
           <VStack align="start" spacing={2}>

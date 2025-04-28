@@ -3,6 +3,9 @@ import { Box, Text, Image, VStack, HStack, Badge, Button, Link, Divider, Flex } 
 import { Member } from '../../types/member';
 import { getMemberPhoto } from '../../services/imageProxy';
 import { ExternalLinkIcon } from '@chakra-ui/icons';
+import { staticDataService } from '../../services/staticDataService';
+import { convertApiBill } from '../../types/bill';
+import BillSummary from '../bill/BillSummary';
 
 interface MemberCardProps {
   member: Member;
@@ -11,6 +14,7 @@ interface MemberCardProps {
 
 export const MemberCard: React.FC<MemberCardProps> = ({ member, showDistrict }) => {
   const [photoUrl, setPhotoUrl] = useState<string>('/default-member-photo.jpg');
+  const [selectedBillForModal, setSelectedBillForModal] = useState<any>(null);
 
   useEffect(() => {
     const loadPhoto = async () => {
@@ -22,7 +26,6 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, showDistrict }) 
 
   // Dummy data for all fields
   const mockCommittees = ["Judiciary", "Finance", "Energy and Commerce"];
-  const mockContact = "rep.email@congress.gov";
   const mockNextElection = "2026-11-03";
   const mockVotes = [
     { billId: 'HR2399', vote: 'yes', title: 'Rural Broadband Protection Act of 2025' },
@@ -90,22 +93,50 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, showDistrict }) 
         </Box>
         <Box>
           <Text fontWeight="bold" mb={1}>Contact Information</Text>
-          <Text fontSize="sm">${member.firstName}.${member.lastName}@${member.chamber}.congrees.gov</Text>
+          <Text fontSize="sm">{`${member.firstName.toLowerCase()}.${member.lastName.toLowerCase()}@${member.chamber}.congress.gov`}</Text>
         </Box>
         <Box>
           <Text fontWeight="bold" mb={1}>Next Election</Text>
           <Text fontSize="sm">{mockNextElection}</Text>
         </Box>
         <Box>
-          <Text fontWeight="bold" mb={1}>Recent Voting Record</Text>
+          <Text fontWeight="bold" mb={1}>Years Served</Text>
+          <Text fontSize="sm">{member.chamber === 'house' ? '8 Years served (4th term)' : '14 years served (3rd term)'}</Text>
+        </Box>
+        <Box>
+          <Text fontWeight="bold" mb={1}>Recent Votes</Text>
           {mockVotes.length > 0 ? (
             <VStack align="start" spacing={0}>
               {mockVotes.map((vote, i) => (
                 <Text key={i} fontSize="sm">
-                  <Link href={`https://www.congress.gov/bill/119th-congress/house-bill/${vote.billId.substring(2)}`} isExternal color="blue.500">
-                    {vote.title}
-                  </Link>
-                  : {vote.vote.toUpperCase()}
+                  <Button
+                    variant="link"
+                    color="blue.500"
+                    onClick={() => {
+                      const bill = staticDataService.getBills().find(b => 
+                        `${b.billType.toUpperCase()}${b.billNumber}` === vote.billId
+                      );
+                      if (bill) {
+                        setSelectedBillForModal(convertApiBill(bill));
+                      }
+                    }}
+                  >
+                    {vote.billId}
+                  </Button>
+                  : <Box as="span" display={{ base: "none", md: "inline-block" }}>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        colorScheme={vote.vote === 'yes' ? 'green' : vote.vote === 'no' ? 'red' : 'gray'}
+                        px={3}
+                        py={1}
+                        fontWeight="bold"
+                        borderRadius="md"
+                        ml={2}
+                      >
+                        {vote.vote.toUpperCase()}
+                      </Button>
+                    </Box>
                 </Text>
               ))}
             </VStack>
@@ -117,18 +148,25 @@ export const MemberCard: React.FC<MemberCardProps> = ({ member, showDistrict }) 
           <Text fontWeight="bold" mb={1}>Legislation</Text>
           <Text fontSize="sm">
             Sponsored: {sponsoredCount}{' '}
-            <Link href={member.sponsoredLegislation?.url || '#'} isExternal color="blue.500" ml={2}>
-              View
+            <Link href={(member.sponsoredLegislation?.url || '#') + '#search-results-wrapper'} isExternal color="blue.500" ml={2}>
+              View on Congress.gov
             </Link>
           </Text>
           <Text fontSize="sm">
             Co-sponsored: {cosponsoredCount}{' '}
-            <Link href={member.cosponsoredLegislation?.url || '#'} isExternal color="blue.500" ml={2}>
-              View
+            <Link href={(member.cosponsoredLegislation?.url || '#') + '#search-results-wrapper'} isExternal color="blue.500" ml={2}>
+              View on Congress.gov
             </Link>
           </Text>
         </Box>
       </VStack>
+      {selectedBillForModal && (
+        <BillSummary
+          billId={`${selectedBillForModal.billType.toUpperCase()}${selectedBillForModal.billNumber}`}
+          isOpen={!!selectedBillForModal}
+          onClose={() => setSelectedBillForModal(null)}
+        />
+      )}
     </Box>
   );
 }; 

@@ -23,7 +23,8 @@ import {
   Flex,
   Link,
   UnorderedList,
-  ListItem
+  ListItem,
+  useBreakpointValue
 } from '@chakra-ui/react';
 import { Committee, CommitteeMember, Meeting, Activity, Subcommittee } from '../../types/committee';
 import { ExternalLinkIcon } from '@chakra-ui/icons';
@@ -45,16 +46,32 @@ interface CommitteeModalProps {
  * @returns {JSX.Element} Committee modal component
  */
 const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, committee }) => {
+  // Use breakpoint value for responsive tab sizes
+  const tabSize = useBreakpointValue({ base: 'sm', md: 'md' });
+  const gridTemplateColumns = useBreakpointValue({ 
+    base: 'repeat(1, 1fr)', 
+    md: 'repeat(auto-fill, minmax(250px, 1fr))' 
+  });
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="xl">
+    <Modal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      size="full" 
+      scrollBehavior="inside"
+    >
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent
+        margin={0}
+        rounded={0}
+        height="100vh"
+      >
         <ModalHeader>
-          <Heading size="lg">{committee.name}</Heading>
+          <Heading size={{ base: "md", md: "lg" }}>{committee.name}</Heading>
           <Text fontSize="sm" color="gray.500">
             {committee.chamber.charAt(0).toUpperCase() + committee.chamber.slice(1)} Committee • {committee.congress}th Congress
           </Text>
-          <Text fontSize="md" mt={2} color="gray.700">
+          <Text fontSize={{ base: "sm", md: "md" }} mt={2} color="gray.700">
             {committee.description}
           </Text>
           <Flex gap={2} mt={2}>
@@ -68,10 +85,10 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
         <ModalBody pb={6}>
           <Tabs>
             <TabList>
-              <Tab>Overview</Tab>
-              <Tab>Members</Tab>
-              <Tab>Meetings</Tab>
-              <Tab>Activity</Tab>
+              <Tab fontSize={tabSize}>Overview</Tab>
+              <Tab fontSize={tabSize}>Members</Tab>
+              <Tab fontSize={tabSize}>Meetings</Tab>
+              <Tab fontSize={tabSize}>Activity</Tab>
             </TabList>
 
             <TabPanels>
@@ -82,14 +99,14 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                     <Heading size="md" mb={4}>Jurisdiction</Heading>
                     <UnorderedList spacing={2}>
                       {committee.jurisdiction?.map((item, index) => (
-                        <ListItem key={index}>{item}</ListItem>
+                        <ListItem key={index} fontSize={{ base: "sm", md: "md" }}>{item}</ListItem>
                       ))}
                     </UnorderedList>
                   </Box>
                   
                   <Box>
                     <Heading size="md" mb={4}>Leadership</Heading>
-                    <Grid templateColumns="repeat(auto-fill, minmax(250px, 1fr))" gap={4}>
+                    <Grid templateColumns={gridTemplateColumns} gap={4}>
                       {committee.members
                         .filter(member => member.role === 'Chair' || member.role === 'Ranking Member')
                         .map((leader) => (
@@ -121,7 +138,7 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                   {/* Committee Members */}
                   <Box>
                     <Heading size="md" mb={4}>Committee Members</Heading>
-                    <Grid templateColumns="repeat(auto-fill, minmax(300px, 1fr))" gap={4}>
+                    <Grid templateColumns={gridTemplateColumns} gap={4}>
                       {committee.members.map((member) => (
                         <Card key={member.id} variant="outline">
                           <CardBody>
@@ -155,7 +172,7 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                               <Heading size="sm">{subcommittee.name}</Heading>
                             </CardHeader>
                             <CardBody>
-                              <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                              <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={4}>
                                 <Box>
                                   <Text fontSize="sm" fontWeight="medium">Chair</Text>
                                   <Text fontSize="sm">{subcommittee.chair}</Text>
@@ -180,8 +197,13 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                   {committee.meetings?.map((meeting) => (
                     <Card key={meeting.id} variant="outline">
                       <CardBody>
-                        <Flex justify="space-between" align="start">
-                          <Box>
+                        <Flex 
+                          direction={{ base: "column", md: "row" }} 
+                          justify={{ md: "space-between" }} 
+                          align={{ md: "start" }}
+                          gap={2}
+                        >
+                          <Box flex="1">
                             <Heading size="sm" mb={2}>{meeting.title}</Heading>
                             <Text fontSize="sm" color="gray.600">
                               {new Date(meeting.date).toLocaleDateString()} at {new Date(meeting.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -194,6 +216,7 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                             </Text>
                           </Box>
                           <Badge
+                            alignSelf={{ base: "flex-start", md: "flex-start" }}
                             colorScheme={
                               meeting.status === 'scheduled' ? 'blue' :
                               meeting.status === 'completed' ? 'green' : 'red'
@@ -217,8 +240,13 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                   {committee.recentActivity?.map((activity, index) => (
                     <Card key={index} variant="outline">
                       <CardBody>
-                        <Flex justify="space-between" align="start">
-                          <Box>
+                        <Flex 
+                          direction={{ base: "column", md: "row" }} 
+                          justify={{ md: "space-between" }} 
+                          align={{ md: "start" }}
+                          gap={2}
+                        >
+                          <Box flex="1">
                             <Text fontSize="sm" color="gray.500">
                               {new Date(activity.date).toLocaleDateString()}
                             </Text>
@@ -226,11 +254,14 @@ const CommitteeModal: React.FC<CommitteeModalProps> = ({ isOpen, onClose, commit
                               {activity.description}
                             </Text>
                           </Box>
-                          <Badge colorScheme={
-                            activity.type === 'hearing' ? 'blue' :
-                            activity.type === 'markup' ? 'green' :
-                            activity.type === 'legislation' ? 'purple' : 'gray'
-                          }>
+                          <Badge 
+                            alignSelf={{ base: "flex-start", md: "flex-start" }}
+                            colorScheme={
+                              activity.type === 'hearing' ? 'blue' :
+                              activity.type === 'markup' ? 'green' :
+                              activity.type === 'legislation' ? 'purple' : 'gray'
+                            }
+                          >
                             {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
                           </Badge>
                         </Flex>

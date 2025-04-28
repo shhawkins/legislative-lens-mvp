@@ -38,23 +38,21 @@ const BillCard: React.FC<BillCardProps> = ({ bill, onViewDetails, isPinned, onTo
       position="relative"
       minH="100px"
     >
-      {/* Pin icon button */}
-      <IconButton
-        icon={<StarIcon />}
-        aria-label={isPinned ? 'Unpin Bill' : 'Pin Bill'}
-        colorScheme={isPinned ? 'yellow' : 'gray'}
-        variant={isPinned ? 'solid' : 'ghost'}
-        size="sm"
-        position="absolute"
-        top={3}
-        right={3}
-        zIndex={2}
-        onClick={e => handleTogglePin(e, bill)}
-      />
       <CardBody>
-        <Heading size="sm" mb={2} pr="40px">
-          {bill.title}
-        </Heading>
+        <Flex align="center" mb={2}>
+          <IconButton
+            icon={<StarIcon />}
+            aria-label={isPinned ? 'Unpin Bill' : 'Pin Bill'}
+            colorScheme={isPinned ? 'yellow' : 'gray'}
+            variant={isPinned ? 'solid' : 'ghost'}
+            size="sm"
+            mr={2}
+            onClick={e => handleTogglePin(e, bill)}
+          />
+          <Heading size="sm">
+            {bill.title}
+          </Heading>
+        </Flex>
         <Text fontSize="sm" color="gray.600" noOfLines={2}>
           {(bill.summary || '').replace(/<[^>]+>/g, '')}
         </Text>

@@ -6,7 +6,6 @@ import {
   Text,
   Badge,
   Icon,
-  Tooltip,
   VStack,
   useColorModeValue,
   Circle
