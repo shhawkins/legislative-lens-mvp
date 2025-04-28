@@ -70,7 +70,6 @@ import BillSummary from './components/bill/BillSummary';
 import { AppContext } from './context/AppContext';
 import { convertApiBill } from './types/bill';
 import BillCard from './components/bill/BillCard';
-import { BsDice5 } from "react-icons/bs";
 
 // Mock data
 const mockBill: Bill = {
